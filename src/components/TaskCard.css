@@ -1,0 +1,16 @@
+.task-card {
+  width: 300px;
+  padding: 20px;
+  margin: 15px;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.task-card h2 {
+  margin-bottom: 10px;
+}
+
+.task-card p {
+  margin: 6px 0;
+}

@@ -1,0 +1,910 @@
+/* =========================================================
+   COLLABBOARD REPORTS PAGE
+========================================================= */
+
+.reports-page {
+    width: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
+    padding: 28px 30px 40px 30px;
+    background: #f7f7fb;
+    color: #272331;
+}
+
+
+/* =========================================================
+   PAGE HEADER
+========================================================= */
+
+.reports-page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 30px;
+    margin: 0 0 28px 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.reports-title-area {
+    display: block !important;
+    width: max-content;
+    margin: 0 !important;
+    padding: 0 !important;
+    text-align: left !important;
+}
+
+.reports-title-area > div {
+    margin: 0 !important;
+    padding: 0 !important;
+    text-align: left !important;
+}
+
+.reports-page-label,
+.reports-page-header h1,
+.reports-page-subtitle {
+    display: block;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    text-align: left !important;
+}
+
+.reports-page-label {
+    margin-top: 0 !important;
+    margin-bottom: 7px !important;
+    color: #7135e8;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.reports-page-header h1 {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    color: #211d29;
+    font-size: 36px;
+    line-height: 1.15;
+    font-weight: 750;
+}
+
+.reports-page-subtitle {
+    margin-top: 7px !important;
+    margin-bottom: 0 !important;
+    color: #746d7f;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+
+/* =========================================================
+   HEADER ACTIONS
+========================================================= */
+
+.reports-header-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-top: 22px;
+}
+
+.reports-select-wrapper {
+    min-height: 38px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 7px;
+
+    box-sizing: border-box;
+
+    padding: 0 10px;
+
+    border: 1px solid #ddd9e7;
+    border-radius: 8px;
+
+    background: #ffffff;
+    color: #756e80;
+}
+
+.reports-select-wrapper select {
+    min-width: 88px;
+
+    border: none;
+    outline: none;
+
+    padding: 0;
+
+    background: transparent;
+    color: #4f4859;
+
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 650;
+
+    cursor: pointer;
+
+    appearance: none;
+}
+
+.reports-select-wrapper span {
+    color: #756e80;
+
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.reports-export-button {
+    min-height: 38px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    border: none;
+    border-radius: 8px;
+
+    padding: 0 14px;
+
+    background: #7135e8;
+    color: #ffffff;
+
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.reports-export-button:hover {
+    background: #6330d2;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 7px 17px rgba(113, 53, 232, 0.18);
+}
+
+
+/* =========================================================
+   TOP CONTENT GRID
+========================================================= */
+
+.reports-top-grid {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 2fr)
+        minmax(270px, 0.95fr);
+
+    gap: 18px;
+
+    margin-bottom: 18px;
+}
+
+
+/* =========================================================
+   COMMON CARD
+========================================================= */
+
+.reports-card {
+    box-sizing: border-box;
+
+    background: #ffffff;
+
+    border: 1px solid #eceaf2;
+    border-radius: 15px;
+
+    box-shadow:
+        0 2px 8px rgba(28, 24, 39, 0.03);
+}
+
+.reports-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    gap: 15px;
+
+    margin-bottom: 16px;
+}
+
+.reports-card-header h2 {
+    margin: 0;
+
+    color: #24202d;
+
+    font-size: 15px;
+    font-weight: 750;
+}
+
+.reports-card-header p {
+    margin: 5px 0 0;
+
+    color: #938d9d;
+
+    font-size: 11px;
+}
+
+
+/* =========================================================
+   CHART CARD
+========================================================= */
+
+.reports-chart-card {
+    min-height: 320px;
+
+    padding: 20px;
+}
+
+.reports-chart-legend {
+    display: flex;
+    align-items: center;
+
+    gap: 14px;
+
+    color: #7e7788;
+
+    font-size: 10px;
+    font-weight: 650;
+}
+
+.reports-chart-legend span {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 5px;
+}
+
+.reports-legend-dot {
+    width: 18px;
+    height: 3px;
+
+    display: inline-block;
+
+    border-radius: 999px;
+}
+
+.reports-planned-dot {
+    border-top: 2px dashed #aaa4b2;
+}
+
+.reports-completed-dot {
+    background: #2b2731;
+}
+
+.reports-chart-wrapper {
+    width: 100%;
+    height: 225px;
+
+    margin-top: 5px;
+}
+
+.reports-chart {
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    overflow: visible;
+}
+
+.reports-chart-grid-line {
+    stroke: #efedf3;
+    stroke-width: 1;
+}
+
+.reports-chart-label {
+    fill: #9891a0;
+
+    font-size: 10px;
+
+    font-family: inherit;
+}
+
+.reports-planned-line {
+    stroke: #aaa4b2;
+    stroke-width: 2;
+
+    stroke-dasharray: 7 6;
+
+    fill: none;
+}
+
+.reports-completed-line {
+    stroke: #29252f;
+    stroke-width: 3;
+
+    stroke-linecap: round;
+    stroke-linejoin: round;
+
+    fill: none;
+}
+
+.reports-planned-point {
+    fill: #ffffff;
+    stroke: #aaa4b2;
+    stroke-width: 2;
+}
+
+.reports-completed-point {
+    fill: #29252f;
+}
+
+
+/* =========================================================
+   SPRINT SUMMARY
+========================================================= */
+
+.reports-summary-card {
+    min-height: 320px;
+
+    padding: 20px;
+}
+
+.reports-summary-list {
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    gap: 10px;
+}
+
+.reports-summary-item {
+    min-height: 86px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    box-sizing: border-box;
+
+    padding: 11px;
+
+    background: #fcfbfe;
+
+    border: 1px solid #efedf3;
+    border-radius: 11px;
+}
+
+.reports-summary-icon {
+    width: 35px;
+    height: 35px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 9px;
+}
+
+.reports-summary-blue {
+    background: #eef4ff;
+    color: #4d72dc;
+}
+
+.reports-summary-green {
+    background: #ebfaf2;
+    color: #2a995c;
+}
+
+.reports-summary-orange {
+    background: #fff4e8;
+    color: #d9892d;
+}
+
+.reports-summary-purple {
+    background: #f2ecff;
+    color: #7135e8;
+}
+
+.reports-summary-item div:last-child {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 3px;
+}
+
+.reports-summary-item span {
+    color: #928b9d;
+
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.reports-summary-item strong {
+    color: #25202e;
+
+    font-size: 19px;
+    font-weight: 750;
+}
+
+
+/* =========================================================
+   KPI CARDS
+========================================================= */
+
+.reports-kpi-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 14px;
+
+    margin-bottom: 18px;
+}
+
+.reports-kpi-card {
+    min-height: 105px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 17px;
+
+    box-sizing: border-box;
+
+    padding: 17px 18px;
+
+    background: #ffffff;
+
+    border: 1px solid #eceaf2;
+    border-radius: 14px;
+
+    box-shadow:
+        0 2px 8px rgba(28, 24, 39, 0.03);
+}
+
+.reports-kpi-card > div:first-child {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 3px;
+}
+
+.reports-kpi-card span {
+    color: #918a9b;
+
+    font-size: 10px;
+    font-weight: 750;
+
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.reports-kpi-card strong {
+    color: #24202d;
+
+    font-size: 24px;
+    line-height: 1.2;
+
+    font-weight: 800;
+}
+
+.reports-kpi-card small {
+    color: #9b95a4;
+
+    font-size: 10px;
+}
+
+.reports-kpi-icon {
+    width: 42px;
+    height: 42px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+}
+
+.reports-kpi-green {
+    background: #eaf9f1;
+    color: #29955a;
+}
+
+.reports-kpi-purple {
+    background: #f2ecff;
+    color: #7135e8;
+}
+
+.reports-kpi-red {
+    background: #fff0f1;
+    color: #d34d59;
+}
+
+
+/* =========================================================
+   TEAM WORKLOAD
+========================================================= */
+
+.reports-workload-card {
+    overflow: hidden;
+
+    margin-bottom: 18px;
+}
+
+.reports-workload-card
+.reports-card-header {
+    margin-bottom: 0;
+
+    padding: 19px 20px;
+
+    border-bottom: 1px solid #efedf3;
+}
+
+.reports-sort-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 6px;
+
+    border: 1px solid #e0dce7;
+    border-radius: 8px;
+
+    padding: 7px 10px;
+
+    background: #ffffff;
+    color: #716a7b;
+
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 650;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.reports-sort-button:hover {
+    background: #faf9fc;
+
+    border-color: #cec8d9;
+}
+
+
+/* =========================================================
+   TABLE
+========================================================= */
+
+.reports-table-wrapper {
+    width: 100%;
+
+    overflow-x: auto;
+}
+
+.reports-table {
+    width: 100%;
+
+    min-width: 760px;
+
+    border-collapse: collapse;
+}
+
+.reports-table thead {
+    background: #faf9fc;
+}
+
+.reports-table th {
+    padding: 12px 20px;
+
+    color: #9992a1;
+
+    border-bottom: 1px solid #eceaf1;
+
+    font-size: 9px;
+    font-weight: 800;
+
+    text-align: left;
+
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+
+    white-space: nowrap;
+}
+
+.reports-table td {
+    padding: 14px 20px;
+
+    color: #555060;
+
+    border-bottom: 1px solid #f0eef3;
+
+    font-size: 12px;
+
+    vertical-align: middle;
+}
+
+.reports-table tbody tr {
+    transition:
+        background 0.18s ease;
+}
+
+.reports-table tbody tr:hover {
+    background: #fbfaff;
+}
+
+.reports-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+
+/* =========================================================
+   MEMBER CELL
+========================================================= */
+
+.reports-member-cell {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+}
+
+.reports-member-avatar {
+    width: 34px;
+    height: 34px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: #f0e9ff;
+    color: #6b32d1;
+
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.reports-member-cell > div:last-child {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 2px;
+}
+
+.reports-member-cell strong {
+    color: #28232f;
+
+    font-size: 12px;
+    font-weight: 700;
+
+    white-space: nowrap;
+}
+
+.reports-member-cell span {
+    color: #9992a1;
+
+    font-size: 10px;
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   TABLE VALUES
+========================================================= */
+
+.reports-completed-value {
+    color: #26915a !important;
+
+    font-weight: 750;
+}
+
+.reports-overdue-value {
+    color: #d04b56 !important;
+
+    font-weight: 750;
+}
+
+
+/* =========================================================
+   WORKLOAD BADGES
+========================================================= */
+
+.reports-workload-badge {
+    display: inline-flex;
+    align-items: center;
+
+    padding: 5px 9px;
+
+    border-radius: 999px;
+
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.report-workload-low {
+    background: #eef8f2;
+    color: #2b9259;
+}
+
+.report-workload-medium {
+    background: #fff5e7;
+    color: #ba741a;
+}
+
+.report-workload-high {
+    background: #fff0f1;
+    color: #cc4b57;
+}
+
+
+/* =========================================================
+   EFFICIENCY
+========================================================= */
+
+.reports-efficiency-cell {
+    min-width: 120px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+}
+
+.reports-efficiency-bar {
+    width: 66px;
+    height: 6px;
+
+    overflow: hidden;
+
+    border-radius: 999px;
+
+    background: #ece9f0;
+}
+
+.reports-efficiency-bar div {
+    height: 100%;
+
+    border-radius: inherit;
+
+    background: #7135e8;
+}
+
+.reports-efficiency-cell strong {
+    min-width: 36px;
+
+    color: #2e2937;
+
+    font-size: 11px;
+
+    text-align: right;
+}
+
+
+/* =========================================================
+   EMPTY TABLE
+========================================================= */
+
+.reports-empty-row {
+    padding: 35px !important;
+
+    color: #97919f !important;
+
+    text-align: center;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1100px) {
+
+    .reports-page-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .reports-header-actions {
+        width: 100%;
+    }
+
+    .reports-top-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .reports-summary-card {
+        min-height: auto;
+    }
+}
+
+@media (max-width: 820px) {
+
+    .reports-page {
+        padding: 20px 18px 32px;
+    }
+
+    .reports-kpi-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .reports-summary-list {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 620px) {
+
+    .reports-page {
+        padding: 16px 13px 28px;
+    }
+
+    .reports-page-header {
+        padding: 17px;
+    }
+
+    .reports-title-area {
+        align-items: flex-start;
+    }
+
+    .reports-header-actions {
+        display: grid;
+
+        grid-template-columns: 1fr;
+    }
+
+    .reports-select-wrapper,
+    .reports-export-button {
+        width: 100%;
+    }
+
+    .reports-select-wrapper {
+        justify-content: space-between;
+    }
+
+    .reports-chart-card,
+    .reports-summary-card {
+        padding: 16px;
+    }
+
+    .reports-card-header {
+        flex-direction: column;
+    }
+
+    .reports-chart-legend {
+        margin-top: -4px;
+    }
+
+    .reports-summary-list {
+        grid-template-columns: 1fr;
+    }
+
+    .reports-kpi-card {
+        min-height: 100px;
+    }
+}
+
+
+
