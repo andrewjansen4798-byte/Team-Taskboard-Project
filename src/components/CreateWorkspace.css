@@ -1,0 +1,878 @@
+/* =========================================================
+   COLLABBOARD - CREATE WORKSPACE
+   Matching Workspace Setup Design
+========================================================= */
+
+.create-workspace-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  background:
+    linear-gradient(
+      rgba(255, 255, 255, 0.68),
+      rgba(248, 247, 255, 0.74)
+    ),
+    url("../assets/workspace.png");
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  font-family:
+    Inter,
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  color: #111827;
+}
+
+
+/* =========================================================
+   BACKGROUND OVERLAY
+========================================================= */
+
+.workspace-overlay {
+  position: fixed;
+  inset: 0;
+
+  background: rgba(255, 255, 255, 0.08);
+
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  z-index: 0;
+}
+
+
+/* =========================================================
+   MAIN CONTENT
+========================================================= */
+
+.create-workspace-card {
+  width: 100%;
+  max-width: 720px;
+
+  padding: 35px 40px 30px;
+
+  position: relative;
+  z-index: 1;
+
+  background: transparent;
+  border: none;
+  box-shadow: none;
+
+  text-align: center;
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   LOGO
+========================================================= */
+
+.create-workspace-logo {
+  display: flex;
+  justify-content: center;
+
+  margin-bottom: 12px;
+}
+
+.create-workspace-logo-icon {
+  width: 62px;
+  height: 62px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 16px;
+
+  background: rgba(255, 255, 255, 0.94);
+
+  border: 1px solid #e5e7eb;
+
+  box-shadow:
+    0 8px 25px rgba(15, 23, 42, 0.08);
+}
+
+
+/* Make Lucide briefcase slightly bolder */
+
+.create-workspace-logo-icon svg {
+  color: #7c3aed;
+  stroke-width: 2.5;
+}
+
+
+/* =========================================================
+   BRAND
+========================================================= */
+
+.create-workspace-brand {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: 65px;
+  font-weight: 800;
+
+  letter-spacing: -1.8px;
+  line-height: 1.1;
+}
+
+.create-workspace-brand span {
+  color: #7c3aed;
+}
+
+.create-workspace-tagline {
+  margin: 3px 0 32px;
+
+  color: #222326;
+
+  font-size: 16px;
+  font-weight: 600;
+}
+
+
+/* =========================================================
+   HEADING
+========================================================= */
+
+.create-workspace-heading h2 {
+  margin: 0 0 8px;
+
+  color: #111827;
+
+  font-size: 34px;
+  font-weight: 800;
+
+  letter-spacing: -0.8px;
+}
+
+.create-workspace-heading p {
+  max-width: 520px;
+
+  margin: 0 auto 27px;
+
+  color: #111827;
+
+  font-size: 15px;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+
+/* =========================================================
+   FORM
+========================================================= */
+
+.create-workspace-form {
+  width: 100%;
+
+  display: flex;
+  flex-direction: column;
+
+  text-align: left;
+}
+
+
+/* =========================================================
+   FIELD
+========================================================= */
+
+.create-workspace-field {
+  margin-bottom: 19px;
+}
+
+.create-workspace-field label {
+  display: block;
+
+  margin-bottom: 9px;
+
+  color: #111827;
+
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.create-workspace-field label span {
+  margin-left: 4px;
+
+  color: #374151;
+
+  font-weight: 500;
+}
+
+
+/* =========================================================
+   INPUT WRAPPER
+========================================================= */
+
+.create-workspace-input-wrapper {
+  width: 100%;
+  height: 58px;
+
+  display: flex;
+  align-items: center;
+
+  box-sizing: border-box;
+
+  border-radius: 12px;
+
+  background: rgba(255, 255, 255, 0.94);
+
+  border: 1px solid #e5e7eb;
+
+  box-shadow:
+    0 6px 20px rgba(15, 23, 42, 0.06);
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.create-workspace-input-wrapper:hover {
+  border-color: #d1d5db;
+}
+
+.create-workspace-input-wrapper:focus-within {
+  background: #ffffff;
+
+  border-color: #8b5cf6;
+
+  box-shadow:
+    0 0 0 4px rgba(124, 58, 237, 0.09);
+}
+
+
+/* =========================================================
+   INPUT ICON
+========================================================= */
+
+.create-workspace-input-icon {
+  width: 25px;
+  min-width: 25px;
+  height: 56px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-left: 15px;
+
+  color: #7c3aed;
+}
+
+.create-workspace-input-icon svg {
+  stroke-width: 2.2;
+}
+
+
+/* =========================================================
+   INPUT
+========================================================= */
+
+.create-workspace-input-wrapper input {
+  flex: 1;
+
+  width: 100%;
+  height: 100%;
+
+  padding: 0 18px 0 8px;
+
+  border: none !important;
+  outline: none !important;
+
+  background: transparent !important;
+
+  box-shadow: none !important;
+
+  color: #111827;
+
+  font-family: inherit;
+  font-size: 15px;
+
+  box-sizing: border-box;
+}
+
+.create-workspace-input-wrapper input::placeholder {
+  color: #9ca3af;
+}
+
+
+/* =========================================================
+   TEXTAREA WRAPPER
+========================================================= */
+
+.create-workspace-textarea-wrapper {
+  width: 100%;
+  min-height: 125px;
+
+  display: flex;
+  align-items: flex-start;
+
+  box-sizing: border-box;
+
+  border-radius: 12px;
+
+  background: rgba(255, 255, 255, 0.94);
+
+  border: 1px solid #e5e7eb;
+
+  box-shadow:
+    0 6px 20px rgba(15, 23, 42, 0.06);
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.create-workspace-textarea-wrapper:hover {
+  border-color: #d1d5db;
+}
+
+.create-workspace-textarea-wrapper:focus-within {
+  background: #ffffff;
+
+  border-color: #8b5cf6;
+
+  box-shadow:
+    0 0 0 4px rgba(124, 58, 237, 0.09);
+}
+
+
+/* =========================================================
+   DESCRIPTION ICON
+========================================================= */
+
+.create-workspace-textarea-icon {
+  width: 25px;
+  min-width: 25px;
+  height: 56px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-left: 15px;
+
+  color: #7c3aed;
+}
+
+.create-workspace-textarea-icon svg {
+  stroke-width: 2.2;
+}
+
+
+/* =========================================================
+   TEXTAREA
+========================================================= */
+
+.create-workspace-textarea-wrapper textarea {
+  flex: 1;
+
+  width: 100%;
+  min-height: 120px;
+
+  padding: 16px 18px 16px 8px;
+
+  resize: vertical;
+
+  border: none !important;
+  outline: none !important;
+
+  background: transparent !important;
+
+  box-shadow: none !important;
+
+  color: #111827;
+
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+
+  box-sizing: border-box;
+
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.create-workspace-textarea-wrapper textarea::placeholder {
+  color: #9ca3af;
+}
+
+.create-workspace-textarea-wrapper textarea:focus {
+  border: none !important;
+  outline: none !important;
+
+  box-shadow: none !important;
+
+  background: transparent !important;
+}
+
+
+/* =========================================================
+   CREATE BUTTON
+========================================================= */
+
+.create-workspace-button {
+  width: 100%;
+  height: 56px;
+
+  margin-top: 2px;
+
+  border: none;
+  border-radius: 11px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 12px;
+
+  background: #7c3aed;
+
+  color: #ffffff;
+
+  font-size: 15px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 8px 22px rgba(124, 58, 237, 0.20);
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.create-workspace-button:hover {
+  transform: translateY(-2px);
+
+  background: #6d28d9;
+
+  box-shadow:
+    0 12px 28px rgba(124, 58, 237, 0.27);
+}
+
+.create-workspace-button:active {
+  transform: translateY(0);
+}
+
+
+/* =========================================================
+   ARROW
+========================================================= */
+
+.create-workspace-arrow {
+  font-size: 22px;
+
+  line-height: 1;
+
+  transition:
+    transform 0.2s ease;
+}
+
+.create-workspace-button:hover .create-workspace-arrow {
+  transform: translateX(5px);
+}
+
+
+/* =========================================================
+   BACK BUTTON
+========================================================= */
+
+.create-workspace-back {
+  margin-top: 19px;
+
+  border: none;
+  background: transparent;
+
+  color: #111827;
+
+  font-family: inherit;
+
+  font-size: 14px;
+
+  cursor: pointer;
+
+  transition:
+    color 0.2s ease;
+}
+
+.create-workspace-back span {
+  margin-right: 7px;
+
+  font-size: 18px;
+}
+
+.create-workspace-back:hover {
+  color: #7c3aed;
+}
+
+
+/* =========================================================
+   SECURITY BOX
+========================================================= */
+
+.create-workspace-security {
+  margin-top: 22px;
+
+  padding: 13px 15px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  text-align: left;
+
+  border-radius: 11px;
+
+  background: rgba(255, 255, 255, 0.78);
+
+  border: 1px solid #e5e7eb;
+
+  box-shadow:
+    0 5px 18px rgba(15, 23, 42, 0.04);
+}
+
+
+/* =========================================================
+   SECURITY ICON
+========================================================= */
+
+.create-security-icon {
+  width: 36px;
+  height: 36px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 9px;
+
+  background: #ecfdf5;
+
+  border: 1px solid #bbf7d0;
+
+  color: #16a34a;
+
+  font-size: 17px;
+}
+
+
+/* =========================================================
+   SECURITY TEXT
+========================================================= */
+
+.create-workspace-security h4 {
+  margin: 0 0 3px;
+
+  color: #374151;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.create-workspace-security p {
+  margin: 0;
+
+  color: #9ca3af;
+
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   SUCCESS ICON
+========================================================= */
+
+.workspace-success-icon {
+  width: 64px;
+  height: 64px;
+
+  margin: 0 auto 16px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #ecfdf5;
+
+  border: 1px solid #bbf7d0;
+
+  color: #7c3aed;
+
+  font-size: 30px;
+  font-weight: 700;
+
+  box-shadow:
+    0 8px 22px rgba(16, 185, 129, 0.10);
+}
+
+
+/* =========================================================
+   CREATED WORKSPACE
+========================================================= */
+
+.workspace-created-heading {
+  margin-top: 25px;
+}
+
+.workspace-created-heading h2 {
+  margin: 0 0 8px;
+
+  color: #111827;
+
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.workspace-created-heading p {
+  margin: 0 0 22px;
+
+  color: #111827;
+
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+
+/* =========================================================
+   WORKSPACE NAME
+========================================================= */
+
+.created-workspace-name {
+  margin-bottom: 18px;
+
+  color: #111827;
+
+  font-size: 23px;
+  font-weight: 800;
+}
+
+
+/* =========================================================
+   INVITE CODE
+========================================================= */
+
+.invite-code-section {
+  margin-bottom: 16px;
+
+  text-align: left;
+}
+
+.invite-code-section label {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: #111827;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.invite-code-box {
+  height: 56px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding-left: 17px;
+
+  border-radius: 11px;
+
+  background: rgba(255, 255, 255, 0.94);
+
+  border: 1px solid #e5e7eb;
+
+  box-shadow:
+    0 5px 18px rgba(15, 23, 42, 0.05);
+}
+
+.invite-code-box span {
+  color: #111827;
+
+  font-size: 16px;
+  font-weight: 700;
+
+  letter-spacing: 2px;
+}
+
+
+/* =========================================================
+   COPY BUTTON
+========================================================= */
+
+.copy-code-button {
+  height: 100%;
+
+  padding: 0 18px;
+
+  border: none;
+
+  border-left: 1px solid #e5e7eb;
+
+  border-radius: 0 11px 11px 0;
+
+  background: #f5f3ff;
+
+  color: #7c3aed;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.copy-code-button:hover {
+  background: #ede9fe;
+
+  color: #6d28d9;
+}
+
+
+/* =========================================================
+   INVITATION INFO
+========================================================= */
+
+.invite-info-box {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  margin-bottom: 20px;
+  padding: 11px 13px;
+
+  text-align: left;
+
+  border-radius: 10px;
+
+  background: rgba(255, 255, 255, 0.78);
+
+  border: 1px solid #e5e7eb;
+}
+
+.invite-info-icon {
+  width: 27px;
+  height: 27px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  color: #7c3aed;
+
+  background: #f5f3ff;
+
+  border: 1px solid #ddd6fe;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.invite-info-box p {
+  margin: 0;
+
+  color: #6b7280;
+
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   RESPONSIVE - TABLET
+========================================================= */
+
+@media (max-width: 700px) {
+
+  .create-workspace-card {
+    max-width: calc(100% - 30px);
+
+    padding: 28px 20px;
+  }
+
+  .create-workspace-brand {
+    font-size: 42px;
+  }
+
+  .create-workspace-heading h2 {
+    font-size: 28px;
+  }
+}
+
+
+/* =========================================================
+   RESPONSIVE - MOBILE
+========================================================= */
+
+@media (max-width: 480px) {
+
+  .create-workspace-card {
+    padding: 24px 16px;
+  }
+
+  .create-workspace-brand {
+    font-size: 34px;
+  }
+
+  .create-workspace-heading h2 {
+    font-size: 25px;
+  }
+
+  .create-workspace-heading p {
+    font-size: 14px;
+  }
+
+  .create-workspace-input-wrapper,
+  .create-workspace-textarea-wrapper {
+    border-radius: 10px;
+  }
+
+  .create-workspace-input-icon,
+  .create-workspace-textarea-icon {
+    width: 25px;
+    min-width: 25px;
+  }
+
+  .create-workspace-input-wrapper input {
+    font-size: 14px;
+  }
+
+  .create-workspace-textarea-wrapper textarea {
+    font-size: 14px;
+  }
+
+  .create-workspace-security {
+    align-items: flex-start;
+  }
+}

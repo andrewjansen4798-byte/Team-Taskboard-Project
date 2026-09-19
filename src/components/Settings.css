@@ -1,0 +1,1072 @@
+/* =========================================================
+   SETTINGS PAGE
+========================================================= */
+
+.settings-page {
+    width: 100%;
+    min-height: 100%;
+    padding: 34px 38px 50px;
+    background: #f9f9ff;
+    box-sizing: border-box;
+    text-align: left;
+}
+
+
+/* =========================================================
+   MAIN CONTAINER
+========================================================= */
+
+.settings-container {
+    width: 100%;
+    max-width: 1180px;
+    margin: 0;
+    text-align: left;
+}
+
+
+/* =========================================================
+   ACCOUNT & SECURITY HEADER
+========================================================= */
+
+.settings-section-title {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    margin-bottom: 18px;
+    text-align: left;
+}
+
+.settings-section-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eee9ff;
+    color: #633cff;
+    flex-shrink: 0;
+}
+
+.settings-section-title h2 {
+    margin: 0;
+    font-size: 19px;
+    color: #111a44;
+    font-weight: 800;
+}
+
+.settings-section-title p {
+    margin: 3px 0 0;
+    color: #68739a;
+    font-size: 13px;
+}
+
+
+/* =========================================================
+   SECURITY CARD
+========================================================= */
+
+.security-card {
+    width: 100%;
+    box-sizing: border-box;
+    background: #ffffff;
+    border: 1px solid #e5e8f5;
+    border-radius: 16px;
+    padding: 22px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 30px rgba(44, 49, 94, 0.04);
+    text-align: left;
+}
+
+
+/* =========================================================
+   CARD HEADER
+========================================================= */
+
+.security-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.security-title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    min-width: 0;
+}
+
+.security-icon {
+    width: 45px;
+    height: 45px;
+    border-radius: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eee9ff;
+    color: #633cff;
+    flex-shrink: 0;
+}
+
+.security-title-wrapper h3 {
+    margin: 0;
+    color: #111a44;
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.security-title-wrapper p {
+    margin: 4px 0 0;
+    color: #7180a4;
+    font-size: 13px;
+}
+
+
+/* =========================================================
+   COLLAPSE BUTTON
+========================================================= */
+
+.collapse-button {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 10px;
+    background: #f5f3ff;
+    color: #633cff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.collapse-button:hover {
+    background: #ebe6ff;
+}
+
+.collapse-button:active {
+    transform: scale(0.96);
+}
+
+
+/* =========================================================
+   CURRENT EMAIL
+========================================================= */
+
+.current-email-box {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid #e1e5f3;
+    border-radius: 13px;
+    background: #fbfbff;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 24px;
+    text-align: left;
+}
+
+.field-label {
+    display: block;
+    margin-bottom: 6px;
+    color: #7180a4;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.current-email-box > div:first-child {
+    min-width: 0;
+}
+
+.current-email-box > div:first-child strong {
+    display: block;
+    overflow-wrap: anywhere;
+    color: #14204d;
+    font-size: 14px;
+    font-weight: 750;
+}
+
+
+/* =========================================================
+   VERIFICATION STATUS
+========================================================= */
+
+.verification-status {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding-left: 22px;
+    border-left: 1px solid #e0e4f1;
+}
+
+.verification-status > svg {
+    color: #159b5c;
+    flex-shrink: 0;
+}
+
+.verification-status strong {
+    display: block;
+    color: #159b5c;
+    font-size: 13px;
+}
+
+.verification-status span {
+    display: block;
+    margin-top: 3px;
+    color: #7b86a7;
+    font-size: 11px;
+}
+
+
+/* =========================================================
+   PRIMARY BUTTON
+========================================================= */
+
+.primary-action-button {
+    min-height: 40px;
+    padding: 0 17px;
+    border: none;
+    border-radius: 9px;
+    background: #633cff;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.primary-action-button:hover {
+    background: #5631e5;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(99, 60, 255, 0.15);
+}
+
+.primary-action-button:active {
+    transform: translateY(0);
+}
+
+
+/* =========================================================
+   EXPANDED FORM
+========================================================= */
+
+.expanded-form {
+    margin-top: 18px;
+    padding: 22px;
+    border: 1px solid #e1e5f3;
+    border-radius: 13px;
+    background: #fbfbff;
+    text-align: left;
+}
+
+.expanded-form-heading {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin-bottom: 22px;
+}
+
+.form-heading-icon {
+    width: 37px;
+    height: 37px;
+    border-radius: 10px;
+    background: #eee9ff;
+    color: #633cff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.expanded-form-heading h4 {
+    margin: 0;
+    color: #14204d;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.expanded-form-heading p {
+    margin: 3px 0 0;
+    color: #7180a4;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+
+/* =========================================================
+   FORM GROUP
+========================================================= */
+
+.form-group {
+    width: 100%;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #172451;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+
+/* =========================================================
+   INPUT
+========================================================= */
+
+.input-wrapper {
+    height: 42px;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #dce1f0;
+    border-radius: 9px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 12px;
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.input-wrapper > svg {
+    color: #8290b4;
+    flex-shrink: 0;
+}
+
+.input-wrapper:focus-within {
+    border-color: #633cff;
+    box-shadow: 0 0 0 3px rgba(99, 60, 255, 0.08);
+}
+
+.input-wrapper input {
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: #172451;
+    font-size: 12px;
+}
+
+.input-wrapper input::placeholder {
+    color: #9aa5c2;
+}
+
+
+/* =========================================================
+   PASSWORD TOGGLE
+========================================================= */
+
+.password-toggle {
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #7d89ad;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.password-toggle:hover {
+    background: #f1efff;
+    color: #633cff;
+}
+
+
+/* =========================================================
+   PASSWORD GRID
+========================================================= */
+
+.password-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+}
+
+
+/* =========================================================
+   FORM ACTIONS
+========================================================= */
+
+.form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.cancel-button {
+    min-height: 40px;
+    padding: 0 18px;
+    border: 1px solid #d2d8e9;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #28345d;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.cancel-button:hover {
+    background: #f7f7fc;
+    border-color: #c6cde0;
+}
+
+
+/* =========================================================
+   SUCCESS MESSAGE
+========================================================= */
+
+.success-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 18px;
+    padding: 14px 15px;
+    border: 1px solid #ccebdc;
+    border-radius: 10px;
+    background: #f0fbf5;
+}
+
+.success-message > svg {
+    color: #159b5c;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.success-message strong {
+    display: block;
+    color: #168451;
+    font-size: 12px;
+}
+
+.success-message span {
+    display: block;
+    margin-top: 3px;
+    color: #52836d;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1000px) {
+
+    .current-email-box {
+        grid-template-columns: 1fr auto;
+    }
+
+    .current-email-box .primary-action-button {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .verification-status {
+        grid-column: 1 / -1;
+        padding-left: 0;
+        padding-top: 14px;
+        border-left: none;
+        border-top: 1px solid #e0e4f1;
+    }
+
+    .password-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+@media (max-width: 900px) {
+
+    .settings-page {
+        padding: 30px 28px 45px;
+    }
+
+    .current-email-box {
+        grid-template-columns: 1fr;
+    }
+
+    .current-email-box .primary-action-button {
+        grid-column: auto;
+        grid-row: auto;
+        justify-self: start;
+    }
+
+    .verification-status {
+        grid-column: auto;
+    }
+}
+
+
+@media (max-width: 600px) {
+
+    .settings-page {
+        padding: 24px 16px 40px;
+    }
+
+    .settings-section-title {
+        align-items: flex-start;
+        margin-bottom: 16px;
+    }
+
+    .settings-section-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 11px;
+    }
+
+    .settings-section-title h2 {
+        font-size: 17px;
+    }
+
+    .security-card {
+        padding: 16px;
+        border-radius: 14px;
+    }
+
+    .security-card-header {
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .security-title-wrapper {
+        align-items: flex-start;
+    }
+
+    .security-icon {
+        width: 41px;
+        height: 41px;
+        border-radius: 11px;
+    }
+
+    .security-title-wrapper h3 {
+        font-size: 15px;
+    }
+
+    .security-title-wrapper p {
+        max-width: 220px;
+        line-height: 1.45;
+    }
+
+    .current-email-box {
+        padding: 16px;
+    }
+
+    .current-email-box .primary-action-button {
+        width: 100%;
+    }
+
+    .expanded-form {
+        padding: 16px;
+    }
+
+    .expanded-form-heading {
+        align-items: flex-start;
+        margin-bottom: 20px;
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .form-actions button {
+        width: 100%;
+    }
+
+    .success-message {
+        padding: 13px;
+    }
+}
+
+
+@media (max-width: 420px) {
+
+    .settings-page {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .security-card {
+        padding: 13px;
+    }
+
+    .security-card-header {
+        gap: 8px;
+    }
+
+    .security-title-wrapper {
+        gap: 9px;
+    }
+
+    .security-icon {
+        width: 38px;
+        height: 38px;
+    }
+
+    .security-title-wrapper p {
+        font-size: 12px;
+    }
+
+    .collapse-button {
+        width: 34px;
+        height: 34px;
+    }
+
+    .expanded-form {
+        padding: 13px;
+    }
+}
+
+
+
+
+
+/* =========================================================
+   DANGER ZONE
+========================================================= */
+
+.danger-zone-card {
+    margin-top: 22px;
+    background: #ffffff;
+    border: 1px solid #f0c8cc;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.danger-zone-header {
+    padding: 19px 21px;
+    border-bottom: 1px solid #f4dfe1;
+    background: #fffafb;
+}
+
+.danger-zone-title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.danger-zone-icon {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: #fff0f1;
+    color: #dc4754;
+}
+
+.danger-zone-title-wrapper h3 {
+    margin: 0;
+    color: #2b2023;
+    font-size: 16px;
+    font-weight: 750;
+}
+
+.danger-zone-title-wrapper p {
+    margin: 4px 0 0;
+    color: #9a7378;
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+.danger-zone-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 20px 21px;
+}
+
+.danger-zone-content > div {
+    min-width: 0;
+}
+
+.danger-zone-content strong {
+    display: block;
+    color: #292126;
+    font-size: 13px;
+    font-weight: 750;
+}
+
+.danger-zone-content p {
+    margin: 5px 0 0;
+    color: #8f7d81;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.delete-account-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    flex-shrink: 0;
+    min-height: 38px;
+    padding: 0 14px;
+    border: 1px solid #dc4754;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #dc4754;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.delete-account-button:hover {
+    background: #dc4754;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(220, 71, 84, 0.18);
+}
+
+/* =========================================================
+   DELETE ACCOUNT MODAL
+========================================================= */
+
+.delete-account-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.58);
+    backdrop-filter: blur(4px);
+}
+
+.delete-account-modal {
+    position: relative;
+    width: 100%;
+    max-width: 430px;
+    box-sizing: border-box;
+    padding: 28px;
+    border-radius: 16px;
+    background: #ffffff;
+    border: 1px solid #ece7eb;
+    box-shadow: 0 24px 65px rgba(15, 23, 42, 0.2);
+}
+
+.delete-modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 8px;
+    background: #f7f5f7;
+    color: #756d76;
+    cursor: pointer;
+}
+
+.delete-modal-close:hover {
+    background: #efebee;
+    color: #31282e;
+}
+
+.delete-modal-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    border-radius: 12px;
+    background: #fff0f1;
+    color: #dc4754;
+}
+
+.delete-account-modal h2 {
+    margin: 0;
+    color: #292126;
+    font-size: 20px;
+    font-weight: 750;
+}
+
+.delete-account-modal > p {
+    margin: 8px 0 0;
+    color: #756d76;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.delete-error-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 10px 11px;
+    border: 1px solid #f1c7cb;
+    border-radius: 8px;
+    background: #fff5f6;
+    color: #bd3e4b;
+    font-size: 11px;
+}
+
+.delete-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    margin-top: 22px;
+}
+
+.delete-cancel-button,
+.delete-confirm-button {
+    min-height: 38px;
+    padding: 0 13px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.delete-cancel-button {
+    border: 1px solid #ddd8de;
+    background: #ffffff;
+    color: #68606a;
+}
+
+.delete-cancel-button:hover {
+    background: #faf9fa;
+}
+
+.delete-confirm-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: none;
+    background: #dc4754;
+    color: #ffffff;
+    box-shadow: 0 5px 14px rgba(220, 71, 84, 0.18);
+}
+
+.delete-confirm-button:hover {
+    background: #c83e4b;
+}
+
+.delete-cancel-button:disabled,
+.delete-confirm-button:disabled,
+.delete-modal-close:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* =========================================================
+   DELETE ACCOUNT BUTTON
+========================================================= */
+
+.delete-account-wrapper {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 22px;
+}
+
+.delete-account-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid #dc3545;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #dc3545;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.delete-account-button:hover {
+    background: #dc3545;
+    color: #ffffff;
+}
+
+
+/* =========================================================
+   DELETE ACCOUNT POPUP
+========================================================= */
+
+.delete-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(20, 16, 25, 0.45);
+    backdrop-filter: blur(3px);
+}
+
+.delete-modal {
+    position: relative;
+    width: 100%;
+    max-width: 360px;
+    padding: 24px;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+    text-align: center;
+}
+
+.delete-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: #77717d;
+    cursor: pointer;
+}
+
+.delete-modal-close:hover {
+    background: #f5f3f7;
+    color: #2a252e;
+}
+
+.delete-modal-icon {
+    width: 46px;
+    height: 46px;
+    margin: 0 auto 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #fff1f2;
+    color: #dc3545;
+}
+
+.delete-modal h3 {
+    margin: 0 0 8px;
+    color: #211d29;
+    font-size: 18px;
+    font-weight: 750;
+}
+
+.delete-modal p {
+    margin: 0;
+    color: #746d7f;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.delete-modal-warning {
+    display: block;
+    margin-top: 6px;
+    color: #dc3545;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.delete-modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.delete-modal-cancel,
+.delete-modal-confirm {
+    min-width: 100px;
+    padding: 9px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.delete-modal-cancel {
+    border: 1px solid #ddd8e2;
+    background: #ffffff;
+    color: #625b68;
+}
+
+.delete-modal-cancel:hover {
+    background: #f6f4f7;
+}
+
+.delete-modal-confirm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid #dc3545;
+    background: #dc3545;
+    color: #ffffff;
+}
+
+.delete-modal-confirm:hover {
+    background: #c82333;
+    border-color: #c82333;
+}
+
+.delete-modal-cancel:disabled,
+.delete-modal-confirm:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 600px) {
+    .delete-account-wrapper {
+        justify-content: flex-start;
+    }
+
+    .delete-modal {
+        max-width: 330px;
+        padding: 22px;
+    }
+}
