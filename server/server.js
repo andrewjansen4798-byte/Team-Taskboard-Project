@@ -3,6 +3,7 @@ const cors = require("cors");
 require("dotenv").config();
 
 const connectDB = require("./config/db");
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 
@@ -20,7 +21,7 @@ app.use(
 app.use(express.json());
 
 // =========================================================
-// TEST ROUTE
+// ROOT TEST ROUTE
 // =========================================================
 
 app.get("/", (req, res) => {
@@ -29,6 +30,12 @@ app.get("/", (req, res) => {
     message: "CollabBoard API is running",
   });
 });
+
+// =========================================================
+// AUTH ROUTES
+// =========================================================
+
+app.use("/api/auth", authRoutes);
 
 // =========================================================
 // DATABASE + SERVER
