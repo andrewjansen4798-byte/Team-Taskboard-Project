@@ -6,6 +6,7 @@ const connectDB = require("./config/db");
 
 const authRoutes = require("./routes/authRoutes");
 const workspaceRoutes = require("./routes/workspaceRoutes");
+const taskRoutes = require("./routes/taskRoutes");
 
 const app = express();
 
@@ -44,6 +45,12 @@ app.use("/api/auth", authRoutes);
 // =========================================================
 
 app.use("/api/workspaces", workspaceRoutes);
+
+// =========================================================
+// TASK ROUTES
+// =========================================================
+
+app.use("/api/tasks", taskRoutes);
 
 // =========================================================
 // DATABASE + SERVER
