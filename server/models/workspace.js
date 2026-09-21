@@ -49,8 +49,14 @@ const workspaceSchema = new mongoose.Schema(
       type: String,
       required: [true, "Workspace name is required"],
       trim: true,
-      minlength: [2, "Workspace name must contain at least 2 characters"],
-      maxlength: [100, "Workspace name cannot exceed 100 characters"],
+      minlength: [
+        2,
+        "Workspace name must contain at least 2 characters",
+      ],
+      maxlength: [
+        100,
+        "Workspace name cannot exceed 100 characters",
+      ],
     },
 
     description: {
@@ -110,30 +116,28 @@ const workspaceSchema = new mongoose.Schema(
 );
 
 // =========================================================
-// VALIDATE LEADER COUNT
+// VALIDATE TEAM LEADER COUNT
 // =========================================================
 //
-// Every workspace can have at most ONE Team Leader.
+// Every workspace must have exactly ONE active Team Leader.
 //
-// The application will make the workspace creator the initial
-// Team Leader when the workspace is created.
+// The workspace creator becomes the initial Team Leader.
+// A normal member cannot become a second Team Leader.
 //
 // =========================================================
 
-workspaceSchema.pre("validate", function (next) {
-  const leaderCount = this.members.filter(
+workspaceSchema.pre("validate", function () {
+  const activeLeaderCount = this.members.filter(
     (member) =>
       member.role === "leader" &&
       member.status === "active"
   ).length;
 
-  if (leaderCount > 1) {
-    return next(
-      new Error("A workspace can have only one active Team Leader")
+  if (activeLeaderCount !== 1) {
+    throw new Error(
+      "A workspace must have exactly one active Team Leader"
     );
   }
-
-  next();
 });
 
 // =========================================================
