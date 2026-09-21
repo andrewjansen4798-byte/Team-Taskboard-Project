@@ -3,7 +3,9 @@ const cors = require("cors");
 require("dotenv").config();
 
 const connectDB = require("./config/db");
+
 const authRoutes = require("./routes/authRoutes");
+const workspaceRoutes = require("./routes/workspaceRoutes");
 
 const app = express();
 
@@ -38,6 +40,12 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 
 // =========================================================
+// WORKSPACE ROUTES
+// =========================================================
+
+app.use("/api/workspaces", workspaceRoutes);
+
+// =========================================================
 // DATABASE + SERVER
 // =========================================================
 
@@ -47,7 +55,9 @@ const startServer = async () => {
   await connectDB();
 
   app.listen(PORT, () => {
-    console.log(`CollabBoard server running on port ${PORT}`);
+    console.log(
+      `CollabBoard server running on port ${PORT}`
+    );
   });
 };
 
