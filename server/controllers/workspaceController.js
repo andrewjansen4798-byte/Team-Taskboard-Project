@@ -1,29 +1,51 @@
+const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 
 const Workspace = require("../models/Workspace");
 const User = require("../models/User");
 
 // =========================================================
-// GENERATE UNIQUE JOIN CODE
+// HELPERS
 // =========================================================
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const generateJoinCode = async () => {
   let joinCode;
   let existingWorkspace;
 
   do {
-    joinCode = crypto
-      .randomBytes(4)
-      .toString("hex")
-      .toUpperCase();
+    joinCode = crypto.randomBytes(4).toString("hex").toUpperCase();
 
     existingWorkspace = await Workspace.findOne({
       joinCode,
-    });
+    })
+      .select("_id")
+      .lean();
   } while (existingWorkspace);
 
   return joinCode;
 };
+
+const buildSafeMember = (user, membership, workspaceId) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  age: user.age,
+  gender: user.gender,
+  projectRole: user.projectRole,
+  currentJob: user.currentJob,
+  phone: user.phone,
+  location: user.location,
+  timeZone: user.timeZone,
+  bio: user.bio,
+  workspaceId,
+  role: membership?.role || null,
+  status: membership?.status || null,
+});
+
+const getValidationMessages = (error) =>
+  Object.values(error.errors || {}).map((item) => item.message);
 
 // =========================================================
 // CREATE WORKSPACE
@@ -33,23 +55,27 @@ const createWorkspace = async (req, res) => {
   try {
     const { name, description } = req.body;
 
-    if (!name || !name.trim()) {
+    if (typeof name !== "string" || !name.trim()) {
       return res.status(400).json({
         success: false,
         message: "Workspace name is required",
       });
     }
 
-    const trimmedName = name.trim();
-
-    const joinCode = await generateJoinCode();
+    if (
+      description !== undefined &&
+      typeof description !== "string"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Workspace description must be text",
+      });
+    }
 
     const workspace = await Workspace.create({
-      name: trimmedName,
-      description: description
-        ? description.trim()
-        : "",
-      joinCode,
+      name: name.trim(),
+      description: description ? description.trim() : "",
+      joinCode: await generateJoinCode(),
       createdBy: req.user._id,
       members: [
         {
@@ -72,7 +98,10 @@ const createWorkspace = async (req, res) => {
       workspace,
     });
   } catch (error) {
-    console.error("Create workspace error:", error);
+    console.error(
+      "Create workspace error:",
+      error
+    );
 
     if (error.code === 11000) {
       return res.status(409).json({
@@ -83,19 +112,17 @@ const createWorkspace = async (req, res) => {
     }
 
     if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map(
-        (item) => item.message
-      );
-
       return res.status(400).json({
         success: false,
-        message: messages.join(", "),
+        message:
+          getValidationMessages(error).join(", "),
       });
     }
 
     return res.status(500).json({
       success: false,
-      message: "Server error while creating workspace",
+      message:
+        "Server error while creating workspace",
     });
   }
 };
@@ -107,6 +134,7 @@ const createWorkspace = async (req, res) => {
 const getMyWorkspaces = async (req, res) => {
   try {
     const workspaces = await Workspace.find({
+      status: "active",
       members: {
         $elemMatch: {
           user: req.user._id,
@@ -172,16 +200,19 @@ const joinWorkspace = async (req, res) => {
   try {
     const { joinCode } = req.body;
 
-    if (!joinCode || !joinCode.trim()) {
+    if (
+      typeof joinCode !== "string" ||
+      !joinCode.trim()
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Workspace join code is required",
+        message:
+          "Workspace join code is required",
       });
     }
 
-    const normalizedJoinCode = joinCode
-      .trim()
-      .toUpperCase();
+    const normalizedJoinCode =
+      joinCode.trim().toUpperCase();
 
     const workspace = await Workspace.findOne({
       joinCode: normalizedJoinCode,
@@ -194,6 +225,13 @@ const joinWorkspace = async (req, res) => {
       });
     }
 
+    if (workspace.status !== "active") {
+      return res.status(403).json({
+        success: false,
+        message: "This workspace is inactive",
+      });
+    }
+
     const existingMemberIndex =
       workspace.members.findIndex(
         (member) =>
@@ -201,52 +239,86 @@ const joinWorkspace = async (req, res) => {
           String(req.user._id)
       );
 
+    let alreadyMember = false;
+
+    // -----------------------------------------------------
+    // ALREADY ACTIVE MEMBER
+    // -----------------------------------------------------
+
     if (
       existingMemberIndex !== -1 &&
-      workspace.members[existingMemberIndex].status ===
-        "active"
+      workspace.members[
+        existingMemberIndex
+      ].status === "active"
     ) {
-      return res.status(409).json({
-        success: false,
-        message:
-          "You are already a member of this workspace",
-      });
+      alreadyMember = true;
     }
 
-    if (existingMemberIndex !== -1) {
-      workspace.members[existingMemberIndex].role =
-        "member";
+    // -----------------------------------------------------
+    // REACTIVATE INACTIVE MEMBERSHIP
+    // -----------------------------------------------------
 
-      workspace.members[existingMemberIndex].status =
-        "active";
+    else if (existingMemberIndex !== -1) {
+      workspace.members[
+        existingMemberIndex
+      ].role = "member";
 
-      workspace.members[existingMemberIndex].joinedAt =
-        new Date();
-    } else {
+      workspace.members[
+        existingMemberIndex
+      ].status = "active";
+
+      workspace.members[
+        existingMemberIndex
+      ].joinedAt = new Date();
+
+      await workspace.save();
+    }
+
+    // -----------------------------------------------------
+    // CREATE NEW MEMBERSHIP
+    // -----------------------------------------------------
+
+    else {
       workspace.members.push({
         user: req.user._id,
         role: "member",
         status: "active",
         joinedAt: new Date(),
       });
+
+      await workspace.save();
     }
 
-    await workspace.save();
+    // -----------------------------------------------------
+    // POPULATE SAFE USER DATA
+    // -----------------------------------------------------
 
     await workspace.populate(
       "members.user",
       "name email"
     );
 
-    const membership = workspace.members.find(
-      (member) =>
-        String(member.user._id) ===
-        String(req.user._id)
-    );
+    const membership =
+      workspace.members.find(
+        (member) =>
+          member.user &&
+          String(member.user._id) ===
+            String(req.user._id)
+      );
+
+    // Deleted users may leave old membership records.
+    // Do not return those null populated members.
+    const populatedMembers =
+      workspace.members.filter(
+        (member) => member.user
+      );
 
     return res.status(200).json({
       success: true,
-      message: "Joined workspace successfully",
+      alreadyMember,
+      message: alreadyMember
+        ? "You are already a member of this workspace. Opening workspace."
+        : "Joined workspace successfully",
       workspace: {
         id: workspace._id,
         name: workspace.name,
@@ -259,7 +331,7 @@ const joinWorkspace = async (req, res) => {
         joinedAt: membership
           ? membership.joinedAt
           : null,
-        members: workspace.members,
+        members: populatedMembers,
         createdBy: workspace.createdBy,
         createdAt: workspace.createdAt,
         updatedAt: workspace.updatedAt,
@@ -272,13 +344,10 @@ const joinWorkspace = async (req, res) => {
     );
 
     if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map(
-        (item) => item.message
-      );
-
       return res.status(400).json({
         success: false,
-        message: messages.join(", "),
+        message:
+          getValidationMessages(error).join(", "),
       });
     }
 
@@ -292,20 +361,7 @@ const joinWorkspace = async (req, res) => {
 
 // =========================================================
 // UPDATE WORKSPACE INFORMATION
-// =========================================================
-//
 // TEAM LEADER ONLY
-//
-// The Team Leader can change:
-// - Workspace name
-// - Workspace description
-//
-// The following cannot be changed here:
-// - joinCode
-// - createdBy
-// - members
-// - status
-//
 // =========================================================
 
 const updateWorkspace = async (req, res) => {
@@ -314,10 +370,6 @@ const updateWorkspace = async (req, res) => {
       name,
       description,
     } = req.body;
-
-    // -------------------------------------------------------
-    // REQUIRE AT LEAST ONE FIELD
-    // -------------------------------------------------------
 
     if (
       name === undefined &&
@@ -330,9 +382,9 @@ const updateWorkspace = async (req, res) => {
       });
     }
 
-    // -------------------------------------------------------
-    // UPDATE NAME
-    // -------------------------------------------------------
+    // -----------------------------------------------------
+    // NAME
+    // -----------------------------------------------------
 
     if (name !== undefined) {
       if (
@@ -341,19 +393,23 @@ const updateWorkspace = async (req, res) => {
       ) {
         return res.status(400).json({
           success: false,
-          message: "Workspace name cannot be empty",
+          message:
+            "Workspace name cannot be empty",
         });
       }
 
-      req.workspace.name = name.trim();
+      req.workspace.name =
+        name.trim();
     }
 
-    // -------------------------------------------------------
-    // UPDATE DESCRIPTION
-    // -------------------------------------------------------
+    // -----------------------------------------------------
+    // DESCRIPTION
+    // -----------------------------------------------------
 
     if (description !== undefined) {
-      if (typeof description !== "string") {
+      if (
+        typeof description !== "string"
+      ) {
         return res.status(400).json({
           success: false,
           message:
@@ -385,13 +441,10 @@ const updateWorkspace = async (req, res) => {
     );
 
     if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map(
-        (item) => item.message
-      );
-
       return res.status(400).json({
         success: false,
-        message: messages.join(", "),
+        message:
+          getValidationMessages(error).join(", "),
       });
     }
 
@@ -405,26 +458,34 @@ const updateWorkspace = async (req, res) => {
 
 // =========================================================
 // ADD WORKSPACE MEMBER
-// =========================================================
-//
 // TEAM LEADER ONLY
-//
 // =========================================================
 
 const addWorkspaceMember = async (req, res) => {
   try {
     const { email } = req.body;
 
-    if (!email || !email.trim()) {
+    if (
+      typeof email !== "string" ||
+      !email.trim()
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Member email is required",
+        message:
+          "Member email is required",
       });
     }
 
-    const normalizedEmail = email
-      .trim()
-      .toLowerCase();
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Please enter a valid email address",
+      });
+    }
 
     const user = await User.findOne({
       email: normalizedEmail,
@@ -445,10 +506,15 @@ const addWorkspaceMember = async (req, res) => {
           String(user._id)
       );
 
+    // -----------------------------------------------------
+    // ALREADY ACTIVE
+    // -----------------------------------------------------
+
     if (
       existingMemberIndex !== -1 &&
-      req.workspace.members[existingMemberIndex].status ===
-        "active"
+      req.workspace.members[
+        existingMemberIndex
+      ].status === "active"
     ) {
       return res.status(409).json({
         success: false,
@@ -457,16 +523,29 @@ const addWorkspaceMember = async (req, res) => {
       });
     }
 
+    // -----------------------------------------------------
+    // REACTIVATE INACTIVE MEMBER
+    // -----------------------------------------------------
+
     if (existingMemberIndex !== -1) {
-      req.workspace.members[existingMemberIndex].role =
-        "member";
+      req.workspace.members[
+        existingMemberIndex
+      ].role = "member";
 
-      req.workspace.members[existingMemberIndex].status =
-        "active";
+      req.workspace.members[
+        existingMemberIndex
+      ].status = "active";
 
-      req.workspace.members[existingMemberIndex].joinedAt =
-        new Date();
-    } else {
+      req.workspace.members[
+        existingMemberIndex
+      ].joinedAt = new Date();
+    }
+
+    // -----------------------------------------------------
+    // ADD NEW MEMBER
+    // -----------------------------------------------------
+
+    else {
       req.workspace.members.push({
         user: user._id,
         role: "member",
@@ -482,10 +561,32 @@ const addWorkspaceMember = async (req, res) => {
       "name email age gender projectRole currentJob phone location timeZone bio"
     );
 
+    const membership =
+      req.workspace.members.find(
+        (member) =>
+          member.user &&
+          String(member.user._id) ===
+            String(user._id)
+      );
+
+    const populatedMemberUser =
+      membership?.user;
+
     return res.status(201).json({
       success: true,
-      message: "Member added successfully",
-      member: user,
+      message:
+        "Member added successfully",
+      member: populatedMemberUser
+        ? buildSafeMember(
+            populatedMemberUser,
+            membership,
+            req.workspace._id
+          )
+        : buildSafeMember(
+            user,
+            membership,
+            req.workspace._id
+          ),
       workspace: req.workspace,
     });
   } catch (error) {
@@ -493,6 +594,14 @@ const addWorkspaceMember = async (req, res) => {
       "Add workspace member error:",
       error
     );
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message:
+          getValidationMessages(error).join(", "),
+      });
+    }
 
     return res.status(500).json({
       success: false,
@@ -506,13 +615,20 @@ const addWorkspaceMember = async (req, res) => {
 // UPDATE WORKSPACE MEMBER
 // =========================================================
 //
-// TEAM LEADER ONLY
+// Normal Member -> own profile only.
+// Team Leader -> any active workspace member.
 //
+// Email can only be changed by the account owner.
+// A current password is required when the email actually
+// changes.
 // =========================================================
 
 const updateWorkspaceMember = async (req, res) => {
   try {
-    const { workspaceId, userId } = req.params;
+    const {
+      workspaceId,
+      userId,
+    } = req.params;
 
     const {
       name,
@@ -520,17 +636,25 @@ const updateWorkspaceMember = async (req, res) => {
       gender,
       projectRole,
       currentJob,
+      email,
+      currentPassword,
+      bio,
       phone,
       location,
       timeZone,
-      bio,
     } = req.body;
 
-    const membership = req.workspace.members.find(
-      (member) =>
-        String(member.user) === String(userId) &&
-        member.status === "active"
-    );
+    // -----------------------------------------------------
+    // TARGET MEMBERSHIP
+    // -----------------------------------------------------
+
+    const membership =
+      req.workspace.members.find(
+        (member) =>
+          String(member.user) ===
+            String(userId) &&
+          member.status === "active"
+      );
 
     if (!membership) {
       return res.status(404).json({
@@ -540,18 +664,48 @@ const updateWorkspaceMember = async (req, res) => {
       });
     }
 
-    if (
-      String(req.user._id) === String(userId) &&
-      membership.role === "leader"
-    ) {
-      return res.status(400).json({
+    // -----------------------------------------------------
+    // REQUESTER MEMBERSHIP
+    // -----------------------------------------------------
+
+    const requesterMembership =
+      req.workspace.members.find(
+        (member) =>
+          String(member.user) ===
+            String(req.user._id) &&
+          member.status === "active"
+      );
+
+    if (!requesterMembership) {
+      return res.status(403).json({
         success: false,
         message:
-          "Team Leader role cannot be changed through member editing",
+          "You are not an active member of this workspace",
       });
     }
 
-    const user = await User.findById(userId);
+    const isSelf =
+      String(req.user._id) ===
+      String(userId);
+
+    const isLeader =
+      requesterMembership.role ===
+      "leader";
+
+    // -----------------------------------------------------
+    // PERMISSION
+    // -----------------------------------------------------
+
+    if (!isSelf && !isLeader) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "You can only edit your own workspace profile",
+      });
+    }
+
+    const user =
+      await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -560,6 +714,34 @@ const updateWorkspaceMember = async (req, res) => {
       });
     }
 
+    // -----------------------------------------------------
+    // REQUIRE AT LEAST ONE UPDATE
+    // -----------------------------------------------------
+
+    const hasUpdate =
+      name !== undefined ||
+      age !== undefined ||
+      gender !== undefined ||
+      projectRole !== undefined ||
+      currentJob !== undefined ||
+      email !== undefined ||
+      bio !== undefined ||
+      phone !== undefined ||
+      location !== undefined ||
+      timeZone !== undefined;
+
+    if (!hasUpdate) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "At least one member field is required to update",
+      });
+    }
+
+    // -----------------------------------------------------
+    // NAME
+    // -----------------------------------------------------
+
     if (name !== undefined) {
       if (
         typeof name !== "string" ||
@@ -567,68 +749,167 @@ const updateWorkspaceMember = async (req, res) => {
       ) {
         return res.status(400).json({
           success: false,
-          message: "Name cannot be empty",
+          message:
+            "Name cannot be empty",
         });
       }
 
       user.name = name.trim();
     }
 
+    // -----------------------------------------------------
+    // AGE
+    // -----------------------------------------------------
+
     if (age !== undefined) {
-      user.age = age;
+      const numericAge =
+        Number(age);
+
+      if (
+        !Number.isInteger(
+          numericAge
+        ) ||
+        numericAge < 13 ||
+        numericAge > 120
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Age must be a valid number between 13 and 120",
+        });
+      }
+
+      user.age =
+        numericAge;
     }
 
-    if (gender !== undefined) {
-      user.gender = gender.trim();
+    // -----------------------------------------------------
+    // STRING PROFILE FIELDS
+    // -----------------------------------------------------
+
+    const stringFields = [
+      ["gender", gender],
+      ["projectRole", projectRole],
+      ["currentJob", currentJob],
+      ["bio", bio],
+      ["phone", phone],
+      ["location", location],
+      ["timeZone", timeZone],
+    ];
+
+    for (const [
+      fieldName,
+      fieldValue,
+    ] of stringFields) {
+      if (fieldValue !== undefined) {
+        if (
+          typeof fieldValue !==
+          "string"
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              `${fieldName} must be text`,
+          });
+        }
+
+        user[fieldName] =
+          fieldValue.trim();
+      }
     }
 
-    if (projectRole !== undefined) {
-      user.projectRole =
-        projectRole.trim();
+    // -----------------------------------------------------
+    // EMAIL
+    // -----------------------------------------------------
+
+    if (email !== undefined) {
+      if (
+        typeof email !== "string" ||
+        !email.trim()
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Email cannot be empty",
+        });
+      }
+
+      const normalizedEmail =
+        email.trim().toLowerCase();
+
+      if (
+        !EMAIL_REGEX.test(
+          normalizedEmail
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Please enter a valid email address",
+        });
+      }
+
+      // No-op if the email has not changed.
+      if (
+        normalizedEmail !==
+        user.email
+      ) {
+        // A Team Leader cannot change
+        // another member's account email.
+        if (!isSelf) {
+          return res.status(403).json({
+            success: false,
+            message:
+              "You cannot change another member's account email",
+          });
+        }
+
+        if (
+          typeof currentPassword !==
+            "string" ||
+          !currentPassword
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Current password is required to change your email",
+          });
+        }
+
+        const passwordMatches =
+          await bcrypt.compare(
+            currentPassword,
+            user.password
+          );
+
+        if (!passwordMatches) {
+          return res.status(401).json({
+            success: false,
+            message:
+              "Current password is incorrect",
+          });
+        }
+
+        user.email =
+          normalizedEmail;
+      }
     }
 
-    if (currentJob !== undefined) {
-      user.currentJob =
-        currentJob.trim();
-    }
-
-    if (phone !== undefined) {
-      user.phone = phone.trim();
-    }
-
-    if (location !== undefined) {
-      user.location = location.trim();
-    }
-
-    if (timeZone !== undefined) {
-      user.timeZone = timeZone.trim();
-    }
-
-    if (bio !== undefined) {
-      user.bio = bio.trim();
-    }
+    // -----------------------------------------------------
+    // SAVE
+    // -----------------------------------------------------
 
     await user.save();
 
     return res.status(200).json({
       success: true,
-      message: "Member updated successfully",
-      member: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        age: user.age,
-        gender: user.gender,
-        projectRole: user.projectRole,
-        currentJob: user.currentJob,
-        phone: user.phone,
-        location: user.location,
-        timeZone: user.timeZone,
-        bio: user.bio,
-        workspaceId,
-        role: membership.role,
-        status: membership.status,
-      },
+      message:
+        "Workspace member updated successfully",
+      member: buildSafeMember(
+        user,
+        membership,
+        workspaceId
+      ),
     });
   } catch (error) {
     console.error(
@@ -636,14 +917,22 @@ const updateWorkspaceMember = async (req, res) => {
       error
     );
 
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map(
-        (item) => item.message
-      );
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Another account already uses this email",
+      });
+    }
 
+    if (
+      error.name ===
+      "ValidationError"
+    ) {
       return res.status(400).json({
         success: false,
-        message: messages.join(", "),
+        message:
+          getValidationMessages(error).join(", "),
       });
     }
 
@@ -657,19 +946,23 @@ const updateWorkspaceMember = async (req, res) => {
 
 // =========================================================
 // REMOVE WORKSPACE MEMBER
-// =========================================================
-//
 // TEAM LEADER ONLY
-//
-// The Team Leader cannot remove themselves.
-//
 // =========================================================
 
-const removeWorkspaceMember = async (req, res) => {
+const removeWorkspaceMember = async (
+  req,
+  res
+) => {
   try {
-    const { userId } = req.params;
+    const { userId } =
+      req.params;
 
-    if (String(req.user._id) === String(userId)) {
+    // Team Leader cannot remove
+    // themselves.
+    if (
+      String(req.user._id) ===
+      String(userId)
+    ) {
       return res.status(400).json({
         success: false,
         message:
@@ -677,11 +970,13 @@ const removeWorkspaceMember = async (req, res) => {
       });
     }
 
-    const membership = req.workspace.members.find(
-      (member) =>
-        String(member.user) === String(userId) &&
-        member.status === "active"
-    );
+    const membership =
+      req.workspace.members.find(
+        (member) =>
+          String(member.user) ===
+            String(userId) &&
+          member.status === "active"
+      );
 
     if (!membership) {
       return res.status(404).json({
@@ -691,7 +986,8 @@ const removeWorkspaceMember = async (req, res) => {
       });
     }
 
-    membership.status = "inactive";
+    membership.status =
+      "inactive";
 
     await req.workspace.save();
 
@@ -707,6 +1003,14 @@ const removeWorkspaceMember = async (req, res) => {
       error
     );
 
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message:
+          getValidationMessages(error).join(", "),
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message:
@@ -714,6 +1018,10 @@ const removeWorkspaceMember = async (req, res) => {
     });
   }
 };
+
+// =========================================================
+// EXPORTS
+// =========================================================
 
 module.exports = {
   createWorkspace,

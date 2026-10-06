@@ -2,6 +2,8 @@ import { useState } from "react";
 import "./SignUp.css";
 import { BriefcaseBusiness } from "lucide-react";
 
+const API_BASE_URL = "http://localhost:5000/api";
+
 function SignUp({ onSignIn }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -14,6 +16,8 @@ function SignUp({ onSignIn }) {
     terms: false,
   });
 
+  const [isLoading, setIsLoading] = useState(false);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
@@ -23,20 +27,38 @@ function SignUp({ onSignIn }) {
     }));
   };
 
-  const handleSubmit = (e) => {
+  // =========================================================
+  // REGISTER USER
+  // =========================================================
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (
-      !formData.fullName ||
-      !formData.email ||
-      !formData.password ||
-      !formData.confirmPassword
-    ) {
+    const name = formData.fullName.trim();
+    const email = formData.email.trim().toLowerCase();
+    const password = formData.password;
+    const confirmPassword = formData.confirmPassword;
+
+    // -------------------------------------------------------
+    // BASIC VALIDATION
+    // -------------------------------------------------------
+
+    if (!name || !email || !password || !confirmPassword) {
       alert("Please fill in all fields.");
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    if (name.length < 2) {
+      alert("Name must contain at least 2 characters.");
+      return;
+    }
+
+    if (password.length < 6) {
+      alert("Password must contain at least 6 characters.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
       alert("Passwords do not match.");
       return;
     }
@@ -46,9 +68,83 @@ function SignUp({ onSignIn }) {
       return;
     }
 
-    console.log("Sign Up Data:", formData);
+    setIsLoading(true);
 
-    alert("Account created successfully!");
+    try {
+      // -----------------------------------------------------
+      // SEND REGISTRATION TO BACKEND
+      // -----------------------------------------------------
+
+      const response = await fetch(
+        `${API_BASE_URL}/auth/register`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+          }),
+        }
+      );
+
+      // -----------------------------------------------------
+      // READ BACKEND RESPONSE
+      // -----------------------------------------------------
+
+      let data;
+
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        throw new Error(
+          "The server returned an invalid registration response."
+        );
+      }
+
+      // -----------------------------------------------------
+      // HANDLE BACKEND ERROR
+      // -----------------------------------------------------
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || "Unable to create your account."
+        );
+      }
+
+      // -----------------------------------------------------
+      // SUCCESS
+      // -----------------------------------------------------
+
+      alert(
+        "Account created successfully! Please log in with your new account."
+      );
+
+      // Clear the registration form
+      setFormData({
+        fullName: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        terms: false,
+      });
+
+      // Send the user to Login
+      if (typeof onSignIn === "function") {
+        onSignIn();
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+
+      alert(
+        error.message ||
+          "Unable to create your account. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -69,11 +165,15 @@ function SignUp({ onSignIn }) {
       <div className="signup-card">
 
         {/* Logo */}
+
         <div className="signup-logo">
 
           <div className="signup-logo-icon">
-  <BriefcaseBusiness size={30} strokeWidth={3.0} />
-</div>
+            <BriefcaseBusiness
+              size={30}
+              strokeWidth={3.0}
+            />
+          </div>
 
           <h1>
             Collab<span>Board</span>
@@ -82,6 +182,7 @@ function SignUp({ onSignIn }) {
         </div>
 
         {/* Subtitle */}
+
         <p className="signup-subtitle">
           Create your account
         </p>
@@ -96,6 +197,7 @@ function SignUp({ onSignIn }) {
         >
 
           {/* Full Name */}
+
           <div className="signup-input-group">
 
             <label htmlFor="fullName">
@@ -130,12 +232,15 @@ function SignUp({ onSignIn }) {
                 onChange={handleChange}
                 autoComplete="name"
                 required
+                disabled={isLoading}
               />
 
             </div>
+
           </div>
 
           {/* Email */}
+
           <div className="signup-input-group">
 
             <label htmlFor="email">
@@ -172,12 +277,15 @@ function SignUp({ onSignIn }) {
                 onChange={handleChange}
                 autoComplete="email"
                 required
+                disabled={isLoading}
               />
 
             </div>
+
           </div>
 
           {/* Password */}
+
           <div className="signup-input-group">
 
             <label htmlFor="password">
@@ -218,6 +326,7 @@ function SignUp({ onSignIn }) {
                 onChange={handleChange}
                 autoComplete="new-password"
                 required
+                disabled={isLoading}
               />
 
               <button
@@ -233,14 +342,19 @@ function SignUp({ onSignIn }) {
                     ? "Hide password"
                     : "Show password"
                 }
+                disabled={isLoading}
               >
-                {showPassword ? "🙈" : "👁️"}
+                {showPassword
+                  ? "🙈"
+                  : "👁️"}
               </button>
 
             </div>
+
           </div>
 
           {/* Confirm Password */}
+
           <div className="signup-input-group">
 
             <label htmlFor="confirmPassword">
@@ -281,6 +395,7 @@ function SignUp({ onSignIn }) {
                 onChange={handleChange}
                 autoComplete="new-password"
                 required
+                disabled={isLoading}
               />
 
               <button
@@ -296,6 +411,7 @@ function SignUp({ onSignIn }) {
                     ? "Hide password"
                     : "Show password"
                 }
+                disabled={isLoading}
               >
                 {showConfirmPassword
                   ? "🙈"
@@ -303,6 +419,7 @@ function SignUp({ onSignIn }) {
               </button>
 
             </div>
+
           </div>
 
           {/* =================================================
@@ -316,6 +433,7 @@ function SignUp({ onSignIn }) {
               name="terms"
               checked={formData.terms}
               onChange={handleChange}
+              disabled={isLoading}
             />
 
             <span>
@@ -338,9 +456,13 @@ function SignUp({ onSignIn }) {
           <button
             type="submit"
             className="create-account-button"
+            disabled={isLoading}
           >
+
             <span>
-              Create Account
+              {isLoading
+                ? "Creating Account..."
+                : "Create Account"}
             </span>
 
             <svg
@@ -351,6 +473,7 @@ function SignUp({ onSignIn }) {
               <path d="M5 12H19" />
               <path d="M13 6L19 12L13 18" />
             </svg>
+
           </button>
 
         </form>
@@ -363,7 +486,9 @@ function SignUp({ onSignIn }) {
 
           <span></span>
 
-          <p>or</p>
+          <p>
+            or
+          </p>
 
           <span></span>
 
@@ -399,6 +524,7 @@ function SignUp({ onSignIn }) {
             fill="none"
             aria-hidden="true"
           >
+
             <rect
               x="5"
               y="10"
@@ -410,6 +536,7 @@ function SignUp({ onSignIn }) {
             <path
               d="M8 10V7C8 4.8 9.8 3 12 3C14.2 3 16 4.8 16 7V10"
             />
+
           </svg>
 
           <span>
@@ -419,6 +546,7 @@ function SignUp({ onSignIn }) {
         </div>
 
       </div>
+
     </div>
   );
 }

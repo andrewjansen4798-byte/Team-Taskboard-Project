@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from "react";
 import "./Team.css";
 
@@ -64,9 +63,89 @@ function Team({
     ) ||
     null;
 
-  const isTeamLeader =
-    activeCurrentUser?.role ===
-    "Team Leader";
+  /* =========================================================
+     ROLE HELPERS
+     =========================================================
+     
+     Backend uses:
+       leader
+       member
+
+     Older/local frontend data may use:
+       Team Leader
+       Member
+
+     Support both forms so the Team page works correctly
+     with the backend and existing frontend data.
+  ========================================================= */
+
+  function normalizeRole(role) {
+    return String(role || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+  }
+
+  function isLeaderRole(role) {
+    const normalizedRole =
+      normalizeRole(role);
+
+    return (
+      normalizedRole === "leader" ||
+      normalizedRole === "team leader"
+    );
+  }
+
+  const isTeamLeader = isLeaderRole(
+    activeCurrentUser?.role
+  );
+
+  /* =========================================================
+     MEMBER ID HELPER
+     =========================================================
+     
+     Supports the different possible ID shapes used by the
+     frontend/backend.
+  ========================================================= */
+
+  function getMemberId(member) {
+    return (
+      member?.id ??
+      member?._id ??
+      member?.userId ??
+      member?.user?._id ??
+      member?.user?.id ??
+      null
+    );
+  }
+
+  const currentUserId =
+    getMemberId(activeCurrentUser);
+
+  /* =========================================================
+     CHECK WHETHER MEMBER IS CURRENT USER
+     ========================================================= */
+
+  function isCurrentUserMember(member) {
+    if (!member) {
+      return false;
+    }
+
+    if (member.isCurrentUser) {
+      return true;
+    }
+
+    const memberId = getMemberId(member);
+
+    if (!currentUserId || !memberId) {
+      return false;
+    }
+
+    return (
+      String(memberId) ===
+      String(currentUserId)
+    );
+  }
 
   /* =========================================================
      SELECTED MEMBER
@@ -79,8 +158,8 @@ function Team({
     () =>
       members.find(
         (member) =>
-          member.id ===
-          selectedMemberId
+          String(getMemberId(member)) ===
+          String(selectedMemberId)
       ) || null,
     [members, selectedMemberId]
   );
@@ -155,7 +234,7 @@ function Team({
 
   /* =========================================================
      OPEN EDIT MEMBER
-     TEAM LEADER ONLY
+     TEAM LEADER ONLY FOR OTHER MEMBERS
   ========================================================= */
 
   function handleOpenEditMember(
@@ -167,7 +246,7 @@ function Team({
 
     if (
       !member ||
-      member.isCurrentUser
+      isCurrentUserMember(member)
     ) {
       return;
     }
@@ -183,7 +262,7 @@ function Team({
         member.name || "",
 
       age:
-        member.age || "",
+        member.age ?? "",
 
       gender:
         member.gender || "",
@@ -206,6 +285,7 @@ function Team({
 
   /* =========================================================
      EDIT MY PROFILE
+     ALL USERS
   ========================================================= */
 
   function handleEditMyProfile() {
@@ -221,7 +301,7 @@ function Team({
         "",
 
       age:
-        activeCurrentUser.age ||
+        activeCurrentUser.age ??
         "",
 
       gender:
@@ -267,24 +347,45 @@ function Team({
   }
 
   /* =========================================================
+     VALIDATE FORM
+  ========================================================= */
+
+  function isValidMemberForm() {
+    if (!formData.name.trim()) {
+      return false;
+    }
+
+    if (!formData.email.trim()) {
+      return false;
+    }
+
+    if (
+      formData.age !== "" &&
+      (
+        Number(formData.age) < 1 ||
+        Number(formData.age) > 120
+      )
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /* =========================================================
      ADD / EDIT MEMBER
   ========================================================= */
 
   function handleMemberSubmit(e) {
     e.preventDefault();
 
-    if (
-      !formData.name.trim() ||
-      !formData.age ||
-      !formData.gender ||
-      !formData.projectRole.trim() ||
-      !formData.email.trim()
-    ) {
+    if (!isValidMemberForm()) {
       return;
     }
 
     /* =======================================================
        EDIT CURRENT USER
+       ALL USERS CAN EDIT THEIR OWN PROFILE
     ======================================================= */
 
     if (isEditingProfile) {
@@ -315,6 +416,8 @@ function Team({
 
         bio:
           formData.bio.trim(),
+
+        isCurrentUser: true,
       };
 
       if (
@@ -338,6 +441,14 @@ function Team({
 
     if (editingMember) {
       if (!isTeamLeader) {
+        return;
+      }
+
+      if (
+        isCurrentUserMember(
+          editingMember
+        )
+      ) {
         return;
       }
 
@@ -464,7 +575,7 @@ function Team({
 
     if (
       !member ||
-      member.isCurrentUser
+      isCurrentUserMember(member)
     ) {
       return;
     }
@@ -483,7 +594,7 @@ function Team({
       "function"
     ) {
       onDeleteMember(
-        member.id
+        getMemberId(member)
       );
     }
 
@@ -492,6 +603,7 @@ function Team({
 
   /* =========================================================
      COPY WORKSPACE CODE
+     ALL USERS
   ========================================================= */
 
   async function handleCopyInviteCode() {
@@ -551,7 +663,6 @@ function Team({
       window.setTimeout(() => {
         setCodeCopied(false);
       }, 2000);
-
     } catch (error) {
       console.error(
         "Unable to copy workspace code:",
@@ -734,7 +845,9 @@ function Team({
                     <div
                       className="team-member-row"
                       key={
-                        member.id
+                        getMemberId(
+                          member
+                        )
                       }
                     >
 
@@ -754,14 +867,17 @@ function Team({
                             {member.name}
                           </h3>
 
-                          {member.isCurrentUser && (
+                          {isCurrentUserMember(
+                            member
+                          ) && (
                             <span className="you-badge">
                               YOU
                             </span>
                           )}
 
-                          {member.role ===
-                            "Team Leader" && (
+                          {isLeaderRole(
+                            member.role
+                          ) && (
                             <span className="leader-badge">
                               TEAM LEADER
                             </span>
@@ -819,7 +935,9 @@ function Team({
                         className="view-member-button"
                         onClick={() =>
                           setSelectedMemberId(
-                            member.id
+                            getMemberId(
+                              member
+                            )
                           )
                         }
                       >
@@ -964,6 +1082,7 @@ function Team({
 
           {/* =================================================
               WORKSPACE CODE
+              ALL USERS CAN COPY
           ================================================= */}
 
           <div className="workspace-code-card">
@@ -1057,7 +1176,7 @@ function Team({
                   {isEditingProfile
                     ? "Update your profile information."
                     : editingMember
-                      ? "Update this team member's information."
+                      ? "Update this team member's full information."
                       : "Add a new member to your team."}
                 </p>
 
@@ -1478,11 +1597,13 @@ function Team({
 
             {/* =================================================
                 TEAM LEADER MEMBER CONTROLS
-                INSIDE VIEW MODAL ONLY
+                OTHER MEMBERS ONLY
             ================================================= */}
 
             {isTeamLeader &&
-              !selectedMember.isCurrentUser && (
+              !isCurrentUserMember(
+                selectedMember
+              ) && (
 
                 <div className="member-profile-actions">
 
@@ -1516,9 +1637,12 @@ function Team({
 
             {/* =================================================
                 CURRENT USER PROFILE
+                ALL USERS
             ================================================= */}
 
-            {selectedMember.isCurrentUser && (
+            {isCurrentUserMember(
+              selectedMember
+            ) && (
 
               <button
                 type="button"

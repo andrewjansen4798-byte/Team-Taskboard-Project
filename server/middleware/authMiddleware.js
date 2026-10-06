@@ -1,8 +1,21 @@
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
+
 const User = require("../models/User");
 
 // =========================================================
 // PROTECT ROUTES
+// =========================================================
+//
+// Responsibilities:
+// 1. Read Bearer token.
+// 2. Validate JWT configuration.
+// 3. Verify JWT.
+// 4. Validate the userId stored in the token.
+// 5. Find the current user.
+// 6. Never expose the password.
+// 7. Attach the authenticated user to req.user.
+//
 // =========================================================
 
 const protect = async (req, res, next) => {
@@ -11,9 +24,13 @@ const protect = async (req, res, next) => {
     // GET AUTHORIZATION HEADER
     // -------------------------------------------------------
 
-    const authHeader = req.headers.authorization;
+    const authHeader =
+      req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (
+      typeof authHeader !== "string" ||
+      !authHeader.startsWith("Bearer ")
+    ) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
@@ -24,12 +41,14 @@ const protect = async (req, res, next) => {
     // EXTRACT TOKEN
     // -------------------------------------------------------
 
-    const token = authHeader.split(" ")[1];
+    const token =
+      authHeader.substring(7).trim();
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Authentication token is missing",
+        message:
+          "Authentication token is missing",
       });
     }
 
@@ -38,11 +57,14 @@ const protect = async (req, res, next) => {
     // -------------------------------------------------------
 
     if (!process.env.JWT_SECRET) {
-      console.error("JWT_SECRET is missing from .env");
+      console.error(
+        "JWT_SECRET is missing from .env"
+      );
 
       return res.status(500).json({
         success: false,
-        message: "Authentication configuration error",
+        message:
+          "Authentication configuration error",
       });
     }
 
@@ -56,47 +78,111 @@ const protect = async (req, res, next) => {
     );
 
     // -------------------------------------------------------
+    // VALIDATE JWT PAYLOAD
+    // -------------------------------------------------------
+
+    if (
+      !decoded ||
+      typeof decoded !== "object" ||
+      !decoded.userId
+    ) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Invalid authentication token",
+      });
+    }
+
+    if (
+      !mongoose.isValidObjectId(
+        decoded.userId
+      )
+    ) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Invalid authentication token",
+      });
+    }
+
+    // -------------------------------------------------------
     // FIND USER
     // -------------------------------------------------------
 
-    const user = await User.findById(
-      decoded.userId
-    ).select("-password");
+    const user =
+      await User.findById(
+        decoded.userId
+      ).select("-password");
+
+    // -------------------------------------------------------
+    // USER MUST STILL EXIST
+    // -------------------------------------------------------
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "User associated with this token was not found",
+        message:
+          "User associated with this token was not found",
       });
     }
 
     // -------------------------------------------------------
-    // ATTACH USER TO REQUEST
+    // ATTACH AUTHENTICATED USER
     // -------------------------------------------------------
 
     req.user = user;
 
-    next();
+    // -------------------------------------------------------
+    // CONTINUE
+    // -------------------------------------------------------
+
+    return next();
   } catch (error) {
-    console.error("Authentication error:", error.message);
+    console.error(
+      "Authentication error:",
+      error.message
+    );
 
-    if (error.name === "JsonWebTokenError") {
+    // -------------------------------------------------------
+    // EXPIRED TOKEN
+    // -------------------------------------------------------
+
+    if (
+      error.name ===
+      "TokenExpiredError"
+    ) {
       return res.status(401).json({
         success: false,
-        message: "Invalid authentication token",
+        message:
+          "Authentication token has expired",
       });
     }
 
-    if (error.name === "TokenExpiredError") {
+    // -------------------------------------------------------
+    // INVALID TOKEN
+    // -------------------------------------------------------
+
+    if (
+      error.name ===
+        "JsonWebTokenError" ||
+      error.name ===
+        "NotBeforeError"
+    ) {
       return res.status(401).json({
         success: false,
-        message: "Authentication token has expired",
+        message:
+          "Invalid authentication token",
       });
     }
+
+    // -------------------------------------------------------
+    // OTHER SERVER ERROR
+    // -------------------------------------------------------
 
     return res.status(500).json({
       success: false,
-      message: "Authentication failed",
+      message:
+        "Authentication failed",
     });
   }
 };

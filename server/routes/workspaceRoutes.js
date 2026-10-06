@@ -1,5 +1,9 @@
 const express = require("express");
 
+const protect = require("../middleware/authMiddleware");
+const requireWorkspaceMember = require("../middleware/workspaceMemberMiddleware");
+const requireWorkspaceRole = require("../middleware/workspaceRoleMiddleware");
+
 const {
   createWorkspace,
   getMyWorkspaces,
@@ -9,9 +13,6 @@ const {
   updateWorkspaceMember,
   removeWorkspaceMember,
 } = require("../controllers/workspaceController");
-
-const protect = require("../middleware/authMiddleware");
-const requireWorkspaceRole = require("../middleware/workspaceRoleMiddleware");
 
 const router = express.Router();
 
@@ -70,14 +71,27 @@ router.post(
 );
 
 // =========================================================
-// EDIT MEMBER
-// TEAM LEADER ONLY
+// EDIT MEMBER PROFILE
+// =========================================================
+//
+// Any active workspace member may edit their own profile.
+//
+// The Team Leader may edit any active workspace member.
+//
+// The controller performs the final permission check:
+//
+// Member:
+//   - own profile only
+//
+// Team Leader:
+//   - any active member
+//
 // =========================================================
 
 router.put(
   "/:workspaceId/members/:userId",
   protect,
-  requireWorkspaceRole("leader"),
+  requireWorkspaceMember,
   updateWorkspaceMember
 );
 
