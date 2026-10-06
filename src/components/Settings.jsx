@@ -16,7 +16,11 @@ import {
 
 import "./Settings.css";
 
-function SettingsPage({ onDeleteAccount }) {
+function SettingsPage({
+  onDeleteAccount,
+  onChangeEmail,
+  onChangePassword,
+}) {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
 
@@ -33,6 +37,20 @@ function SettingsPage({ onDeleteAccount }) {
   const [verificationSent, setVerificationSent] = useState(false);
   const [passwordUpdated, setPasswordUpdated] = useState(false);
 
+  // The authenticated user is restored from the real login session.
+  // This prevents the settings page from displaying a hard-coded email.
+  const currentUser = (() => {
+    try {
+      const storedUser = localStorage.getItem("collabboardUser");
+      return storedUser ? JSON.parse(storedUser) : null;
+    } catch (error) {
+      console.error("Failed to read current user from localStorage:", error);
+      return null;
+    }
+  })();
+
+  const currentEmail = currentUser?.email || "Email unavailable";
+
   // =========================================================
   // DELETE ACCOUNT
   // =========================================================
@@ -44,29 +62,72 @@ function SettingsPage({ onDeleteAccount }) {
   // CHANGE EMAIL
   // =========================================================
 
-  const handleChangeEmail = () => {
-    if (!newEmail.trim()) {
+  const handleChangeEmail = async () => {
+    const trimmedEmail = newEmail.trim().toLowerCase();
+
+    if (!trimmedEmail) {
+      window.alert("Please enter a new email address.");
       return;
     }
 
-    setVerificationSent(true);
+    // The UI is ready for the real backend email-change flow.
+    // Do not show a false success message when no backend handler is connected.
+    if (typeof onChangeEmail !== "function") {
+      window.alert(
+        "Email change is not connected to the backend yet."
+      );
+      return;
+    }
+
+    try {
+      await onChangeEmail(trimmedEmail);
+      setVerificationSent(true);
+    } catch (error) {
+      console.error("Failed to change email:", error);
+      window.alert(
+        error?.message ||
+          "Unable to start the email change process."
+      );
+    }
   };
 
   // =========================================================
   // CHANGE PASSWORD
   // =========================================================
 
-  const handleChangePassword = () => {
-    if (
-      !currentPassword ||
-      !newPassword ||
-      !confirmPassword ||
-      newPassword !== confirmPassword
-    ) {
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      window.alert("Please complete all password fields.");
       return;
     }
 
-    setPasswordUpdated(true);
+    if (newPassword !== confirmPassword) {
+      window.alert("The new password and confirmation do not match.");
+      return;
+    }
+
+    // The UI is ready for the real backend password-change flow.
+    // Do not show a false success message when no backend handler is connected.
+    if (typeof onChangePassword !== "function") {
+      window.alert(
+        "Password change is not connected to the backend yet."
+      );
+      return;
+    }
+
+    try {
+      await onChangePassword({
+        currentPassword,
+        newPassword,
+      });
+      setPasswordUpdated(true);
+    } catch (error) {
+      console.error("Failed to change password:", error);
+      window.alert(
+        error?.message ||
+          "Unable to update the password."
+      );
+    }
   };
 
   // =========================================================
@@ -116,25 +177,27 @@ function SettingsPage({ onDeleteAccount }) {
   // =========================================================
 
   const handleDeleteAccount = async () => {
+    if (typeof onDeleteAccount !== "function") {
+      window.alert(
+        "Account deletion is not connected to the backend yet."
+      );
+      return;
+    }
+
     setIsDeleting(true);
 
     try {
-      // Clear frontend session data
-      localStorage.removeItem("collabboardToken");
-      localStorage.removeItem("collabboardUser");
-      localStorage.removeItem("collabboardWorkspaceName");
-      localStorage.removeItem("collabboardWorkspaceCode");
+      // App.jsx owns the authenticated session reset.
+      // Do not clear localStorage here before the backend action completes.
+      await onDeleteAccount();
 
-      // Let App.jsx handle logout/reset when connected
-      if (typeof onDeleteAccount === "function") {
-        await onDeleteAccount();
-        return;
-      }
-
-      // Frontend-only fallback
-      window.location.reload();
+      setShowDeleteModal(false);
     } catch (error) {
       console.error("Failed to delete account:", error);
+      window.alert(
+        error?.message ||
+          "Unable to delete the account."
+      );
       setIsDeleting(false);
     }
   };
@@ -199,7 +262,7 @@ function SettingsPage({ onDeleteAccount }) {
           <div className="current-email-box">
             <div>
               <span className="field-label">Current Email</span>
-              <strong>andrew.jansen@example.com</strong>
+              <strong>{currentEmail}</strong>
             </div>
 
             <div className="verification-status">

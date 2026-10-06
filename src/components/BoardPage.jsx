@@ -69,6 +69,8 @@ function Board({
 
   const [isEditingTeamName, setIsEditingTeamName] = useState(false);
 
+  const [workspaceNameDraft, setWorkspaceNameDraft] = useState(workspaceName);
+
   const [activeFilterType, setActiveFilterType] = useState("status");
 
   const [filterSearch, setFilterSearch] = useState("");
@@ -974,6 +976,70 @@ function Board({
   }
 
   // =========================================================
+  // WORKSPACE NAME EDITING
+  // =========================================================
+  //
+  // Keep the text being typed locally. Do not call the parent
+  // workspace update handler on every keystroke because that would
+  // send incomplete names (for example, the first single character)
+  // to the backend. The backend update is triggered only when the
+  // user presses the check button or Enter.
+  // =========================================================
+
+  function startEditingTeamName() {
+    setWorkspaceNameDraft(
+      String(workspaceName || "")
+    );
+    setIsEditingTeamName(true);
+  }
+
+  function cancelEditingTeamName() {
+    setWorkspaceNameDraft(
+      String(workspaceName || "")
+    );
+    setIsEditingTeamName(false);
+  }
+
+  async function saveWorkspaceName() {
+    const trimmedName = String(
+      workspaceNameDraft || ""
+    ).trim();
+
+    if (trimmedName.length < 2) {
+      window.alert(
+        "Workspace name must contain at least 2 characters"
+      );
+      return;
+    }
+
+    if (typeof setWorkspaceName !== "function") {
+      window.alert(
+        "Workspace name update is not available."
+      );
+      return;
+    }
+
+    try {
+      const result = await setWorkspaceName(
+        trimmedName
+      );
+
+      // App.jsx currently resolves successfully without returning a
+      // value. A future implementation may explicitly return false
+      // to indicate that the backend update failed.
+      if (result !== false) {
+        setWorkspaceNameDraft(trimmedName);
+        setIsEditingTeamName(false);
+      }
+    } catch (error) {
+      console.error(
+        "Save workspace name error:",
+        error
+      );
+    }
+  }
+
+  // =========================================================
   // MAIN
   // =========================================================
 
@@ -1035,9 +1101,7 @@ function Board({
             <button
               type="button"
               className="board-team-edit-button"
-              onClick={() =>
-                setIsEditingTeamName(true)
-              }
+              onClick={startEditingTeamName}
               title="Edit team name"
             >
               🖉
@@ -1049,27 +1113,42 @@ function Board({
 
             <input
               type="text"
-              value={workspaceName}
-              onChange={(e) => {
-                if (
-                  typeof setWorkspaceName ===
-                  "function"
-                ) {
-                  setWorkspaceName(
-                    e.target.value
-                  );
+              value={workspaceNameDraft}
+              onChange={(e) =>
+                setWorkspaceNameDraft(
+                  e.target.value
+                )
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  saveWorkspaceName();
+                }
+
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  cancelEditingTeamName();
                 }
               }}
               autoFocus
+              maxLength={100}
+              aria-label="Workspace name"
             />
 
             <button
               type="button"
-              onClick={() =>
-                setIsEditingTeamName(false)
-              }
+              onClick={saveWorkspaceName}
+              title="Save workspace name"
             >
               ✓
+            </button>
+
+            <button
+              type="button"
+              onClick={cancelEditingTeamName}
+              title="Cancel workspace name edit"
+            >
+              ×
             </button>
 
           </div>

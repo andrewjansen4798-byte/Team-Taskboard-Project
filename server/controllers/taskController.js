@@ -3,11 +3,331 @@ const mongoose = require("mongoose");
 const Task = require("../models/task");
 
 // =========================================================
-// CREATE TASK
+// CONSTANTS
 // =========================================================
 
-const createTask = async (req, res) => {
+const ALLOWED_STATUSES = [
+  "todo",
+  "doing",
+  "review",
+  "done",
+];
+
+const ALLOWED_PRIORITIES = [
+  "High",
+  "Medium",
+  "Low",
+];
+
+const MAX_TITLE_LENGTH = 200;
+const MAX_DESCRIPTION_LENGTH = 2000;
+
+// =========================================================
+// HELPER - VALIDATION ERROR MESSAGES
+// =========================================================
+
+const getValidationMessages = (error) => {
+  return Object.values(error.errors || {}).map(
+    (item) => item.message
+  );
+};
+
+// =========================================================
+// HELPER - VALIDATE WORKSPACE ID
+// =========================================================
+
+const validateWorkspaceId = (
+  workspaceId,
+  res
+) => {
+  if (
+    !mongoose.isValidObjectId(
+      workspaceId
+    )
+  ) {
+    res.status(400).json({
+      success: false,
+      message: "Invalid workspace ID",
+    });
+
+    return false;
+  }
+
+  return true;
+};
+
+// =========================================================
+// HELPER - VALIDATE TASK ID
+// =========================================================
+
+const validateTaskId = (
+  taskId,
+  res
+) => {
+  if (
+    !mongoose.isValidObjectId(taskId)
+  ) {
+    res.status(400).json({
+      success: false,
+      message: "Invalid task ID",
+    });
+
+    return false;
+  }
+
+  return true;
+};
+
+// =========================================================
+// HELPER - CHECK WORKSPACE CONTEXT
+// =========================================================
+//
+// requireWorkspaceMember middleware should attach the
+// active workspace to req.workspace.
+//
+// This controller performs an additional defensive check.
+// =========================================================
+
+const validateWorkspaceContext = (
+  req,
+  res
+) => {
+  if (
+    !req.workspace ||
+    !Array.isArray(
+      req.workspace.members
+    )
+  ) {
+    res.status(500).json({
+      success: false,
+      message:
+        "Workspace context is unavailable",
+    });
+
+    return false;
+  }
+
+  if (
+    req.workspace.status &&
+    req.workspace.status !== "active"
+  ) {
+    res.status(403).json({
+      success: false,
+      message:
+        "This workspace is inactive",
+    });
+
+    return false;
+  }
+
+  const requesterMembership =
+    req.workspace.members.find(
+      (member) =>
+        String(member.user) ===
+          String(req.user._id) &&
+        member.status === "active"
+    );
+
+  if (!requesterMembership) {
+    res.status(403).json({
+      success: false,
+      message:
+        "You are not an active member of this workspace",
+    });
+
+    return false;
+  }
+
+  return true;
+};
+
+// =========================================================
+// HELPER - GET ACTIVE WORKSPACE MEMBER IDS
+// =========================================================
+
+const getActiveWorkspaceMemberIds = (
+  workspace
+) => {
+  return workspace.members
+    .filter(
+      (member) =>
+        member.status === "active" &&
+        member.user
+    )
+    .map((member) =>
+      String(member.user)
+    );
+};
+
+// =========================================================
+// HELPER - VALIDATE ASSIGNEES
+// =========================================================
+
+const validateAssigneeIds = (
+  assigneeIds,
+  workspace
+) => {
+  if (
+    !Array.isArray(assigneeIds)
+  ) {
+    return {
+      valid: false,
+      message:
+        "assigneeIds must be an array",
+    };
+  }
+
+  // Remove duplicate IDs while
+  // preserving the first occurrence.
+  const normalizedAssigneeIds = [
+    ...new Set(
+      assigneeIds.map((id) =>
+        String(id)
+      )
+    ),
+  ];
+
+  // Validate every ObjectId.
+  for (
+    const assigneeId of normalizedAssigneeIds
+  ) {
+    if (
+      !mongoose.isValidObjectId(
+        assigneeId
+      )
+    ) {
+      return {
+        valid: false,
+        message:
+          "One or more assignee IDs are invalid",
+      };
+    }
+  }
+
+  // Get active members.
+  const activeMemberIds =
+    getActiveWorkspaceMemberIds(
+      workspace
+    );
+
+  // Every assignee must belong to
+  // this workspace and be active.
+  const invalidAssigneeIds =
+    normalizedAssigneeIds.filter(
+      (assigneeId) =>
+        !activeMemberIds.includes(
+          assigneeId
+        )
+    );
+
+  if (
+    invalidAssigneeIds.length > 0
+  ) {
+    return {
+      valid: false,
+      message:
+        "Every assignee must be an active member of this workspace",
+      invalidAssigneeIds,
+    };
+  }
+
+  return {
+    valid: true,
+    assigneeIds:
+      normalizedAssigneeIds,
+  };
+};
+
+// =========================================================
+// HELPER - PARSE DEADLINE
+// =========================================================
+
+const parseDeadline = (
+  deadline
+) => {
+  // null and empty string mean
+  // "remove/no deadline".
+  if (
+    deadline === null ||
+    deadline === ""
+  ) {
+    return {
+      valid: true,
+      value: null,
+    };
+  }
+
+  // Undefined means the field was not
+  // provided by the caller.
+  if (
+    deadline === undefined
+  ) {
+    return {
+      valid: true,
+      value: undefined,
+    };
+  }
+
+  const parsedDeadline =
+    new Date(deadline);
+
+  if (
+    Number.isNaN(
+      parsedDeadline.getTime()
+    )
+  ) {
+    return {
+      valid: false,
+      message: "Invalid deadline",
+    };
+  }
+
+  return {
+    valid: true,
+    value: parsedDeadline,
+  };
+};
+
+// =========================================================
+// HELPER - POPULATE TASK USER REFERENCES
+// =========================================================
+
+const populateTaskUsers = async (
+  task
+) => {
+  await task.populate([
+    {
+      path: "assigneeIds",
+      select:
+        "name email projectRole currentJob",
+    },
+    {
+      path: "createdBy",
+      select:
+        "name email projectRole currentJob",
+    },
+  ]);
+
+  return task;
+};
+
+// =========================================================
+// CREATE TASK
+// =========================================================
+//
+// Any active workspace member can create a task.
+//
+// =========================================================
+
+const createTask = async (
+  req,
+  res
+) => {
   try {
+    const {
+      workspaceId,
+    } = req.params;
+
     const {
       title,
       description,
@@ -17,33 +337,108 @@ const createTask = async (req, res) => {
       deadline,
     } = req.body;
 
-    const { workspaceId } = req.params;
-
     // -----------------------------------------------------
-    // TITLE VALIDATION
+    // VALIDATE WORKSPACE ID
     // -----------------------------------------------------
 
-    if (!title || !title.trim()) {
+    if (
+      !validateWorkspaceId(
+        workspaceId,
+        res
+      )
+    ) {
+      return;
+    }
+
+    // -----------------------------------------------------
+    // VALIDATE WORKSPACE MEMBERSHIP
+    // -----------------------------------------------------
+
+    if (
+      !validateWorkspaceContext(
+        req,
+        res
+      )
+    ) {
+      return;
+    }
+
+    // -----------------------------------------------------
+    // VALIDATE TITLE
+    // -----------------------------------------------------
+
+    if (
+      typeof title !== "string" ||
+      !title.trim()
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Task title is required",
+        message:
+          "Task title is required",
+      });
+    }
+
+    const trimmedTitle =
+      title.trim();
+
+    if (
+      trimmedTitle.length >
+      MAX_TITLE_LENGTH
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Task title cannot exceed 200 characters",
       });
     }
 
     // -----------------------------------------------------
-    // STATUS VALIDATION
+    // VALIDATE DESCRIPTION
     // -----------------------------------------------------
 
-    const allowedStatuses = [
-      "todo",
-      "doing",
-      "review",
-      "done",
-    ];
+    if (
+      description !== undefined &&
+      typeof description !== "string"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Task description must be text",
+      });
+    }
 
-    const taskStatus = status || "todo";
+    const trimmedDescription =
+      description !== undefined
+        ? description.trim()
+        : "";
 
-    if (!allowedStatuses.includes(taskStatus)) {
+    if (
+      trimmedDescription.length >
+      MAX_DESCRIPTION_LENGTH
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Task description cannot exceed 2000 characters",
+      });
+    }
+
+    // -----------------------------------------------------
+    // VALIDATE STATUS
+    // -----------------------------------------------------
+
+    const taskStatus =
+      status === undefined
+        ? "todo"
+        : status;
+
+    if (
+      typeof taskStatus !==
+        "string" ||
+      !ALLOWED_STATUSES.includes(
+        taskStatus
+      )
+    ) {
       return res.status(400).json({
         success: false,
         message:
@@ -52,18 +447,21 @@ const createTask = async (req, res) => {
     }
 
     // -----------------------------------------------------
-    // PRIORITY VALIDATION
+    // VALIDATE PRIORITY
     // -----------------------------------------------------
 
-    const allowedPriorities = [
-      "High",
-      "Medium",
-      "Low",
-    ];
+    const taskPriority =
+      priority === undefined
+        ? "Medium"
+        : priority;
 
-    const taskPriority = priority || "Medium";
-
-    if (!allowedPriorities.includes(taskPriority)) {
+    if (
+      typeof taskPriority !==
+        "string" ||
+      !ALLOWED_PRIORITIES.includes(
+        taskPriority
+      )
+    ) {
       return res.status(400).json({
         success: false,
         message:
@@ -72,82 +470,56 @@ const createTask = async (req, res) => {
     }
 
     // -----------------------------------------------------
-    // ASSIGNEE VALIDATION
+    // VALIDATE ASSIGNEES
     // -----------------------------------------------------
 
-    let normalizedAssigneeIds = [];
+    let normalizedAssigneeIds =
+      [];
 
-    if (assigneeIds !== undefined) {
-      if (!Array.isArray(assigneeIds)) {
+    if (
+      assigneeIds !== undefined
+    ) {
+      const assigneeValidation =
+        validateAssigneeIds(
+          assigneeIds,
+          req.workspace
+        );
+
+      if (
+        !assigneeValidation.valid
+      ) {
         return res.status(400).json({
           success: false,
-          message: "assigneeIds must be an array",
+          message:
+            assigneeValidation.message,
+          ...(assigneeValidation.invalidAssigneeIds
+            ? {
+                invalidAssigneeIds:
+                  assigneeValidation.invalidAssigneeIds,
+              }
+            : {}),
         });
       }
 
-      normalizedAssigneeIds = [
-        ...new Set(
-          assigneeIds.map((id) => String(id))
-        ),
-      ];
-
-      for (const assigneeId of normalizedAssigneeIds) {
-        if (!mongoose.isValidObjectId(assigneeId)) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "One or more assignee IDs are invalid",
-          });
-        }
-      }
+      normalizedAssigneeIds =
+        assigneeValidation.assigneeIds;
     }
 
     // -----------------------------------------------------
-    // CHECK ASSIGNEES ARE ACTIVE MEMBERS
+    // VALIDATE DEADLINE
     // -----------------------------------------------------
 
-    const activeMemberIds = req.workspace.members
-      .filter(
-        (member) => member.status === "active"
-      )
-      .map((member) => String(member.user));
+    const deadlineValidation =
+      parseDeadline(deadline);
 
-    const invalidAssigneeIds =
-      normalizedAssigneeIds.filter(
-        (assigneeId) =>
-          !activeMemberIds.includes(assigneeId)
-      );
-
-    if (invalidAssigneeIds.length > 0) {
+    if (
+      !deadlineValidation.valid
+    ) {
       return res.status(400).json({
         success: false,
         message:
-          "Every assignee must be an active member of this workspace",
-        invalidAssigneeIds,
+          deadlineValidation.message,
       });
-    }
-
-    // -----------------------------------------------------
-    // DEADLINE VALIDATION
-    // -----------------------------------------------------
-
-    let taskDeadline = null;
-
-    if (
-      deadline !== undefined &&
-      deadline !== null &&
-      deadline !== ""
-    ) {
-      const parsedDeadline = new Date(deadline);
-
-      if (Number.isNaN(parsedDeadline.getTime())) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid deadline",
-        });
-      }
-
-      taskDeadline = parsedDeadline;
     }
 
     // -----------------------------------------------------
@@ -163,60 +535,61 @@ const createTask = async (req, res) => {
     // CREATE TASK
     // -----------------------------------------------------
 
-    const task = await Task.create({
-      workspaceId,
-      title: title.trim(),
-      description:
-        description !== undefined
-          ? String(description).trim()
-          : "",
-      status: taskStatus,
-      priority: taskPriority,
-      assigneeIds: normalizedAssigneeIds,
-      deadline: taskDeadline,
-      completedAt,
-      createdBy: req.user._id,
-    });
+    const task =
+      await Task.create({
+        workspaceId,
+        title: trimmedTitle,
+        description:
+          trimmedDescription,
+        status: taskStatus,
+        priority: taskPriority,
+        assigneeIds:
+          normalizedAssigneeIds,
+        deadline:
+          deadlineValidation.value ??
+          null,
+        createdBy:
+          req.user._id,
+        completedAt,
+      });
 
     // -----------------------------------------------------
-    // POPULATE USER REFERENCES
+    // POPULATE REFERENCES
     // -----------------------------------------------------
 
-    await task.populate([
-      {
-        path: "assigneeIds",
-        select:
-          "name email projectRole currentJob",
-      },
-      {
-        path: "createdBy",
-        select:
-          "name email projectRole currentJob",
-      },
-    ]);
+    await populateTaskUsers(
+      task
+    );
 
     return res.status(201).json({
       success: true,
-      message: "Task created successfully",
+      message:
+        "Task created successfully",
       task,
     });
   } catch (error) {
-    console.error("Create task error:", error);
+    console.error(
+      "Create task error:",
+      error
+    );
 
-    if (error.name === "ValidationError") {
-      const messages = Object.values(
-        error.errors
-      ).map((item) => item.message);
-
+    if (
+      error.name ===
+      "ValidationError"
+    ) {
       return res.status(400).json({
         success: false,
-        message: messages.join(", "),
+        message:
+          getValidationMessages(
+            error
+          ).join(", "),
       });
     }
 
     return res.status(500).json({
       success: false,
-      message: "Server error while creating task",
+      message:
+        "Server error while creating task",
     });
   }
 };
@@ -224,27 +597,67 @@ const createTask = async (req, res) => {
 // =========================================================
 // GET WORKSPACE TASKS
 // =========================================================
+//
+// Any active workspace member can view tasks.
+//
+// =========================================================
 
-const getWorkspaceTasks = async (req, res) => {
+const getWorkspaceTasks = async (
+  req,
+  res
+) => {
   try {
-    const { workspaceId } = req.params;
-
-    const tasks = await Task.find({
+    const {
       workspaceId,
-    })
-      .populate({
-        path: "assigneeIds",
-        select:
-          "name email projectRole currentJob",
+    } = req.params;
+
+    // -----------------------------------------------------
+    // VALIDATE WORKSPACE ID
+    // -----------------------------------------------------
+
+    if (
+      !validateWorkspaceId(
+        workspaceId,
+        res
+      )
+    ) {
+      return;
+    }
+
+    // -----------------------------------------------------
+    // VALIDATE WORKSPACE MEMBERSHIP
+    // -----------------------------------------------------
+
+    if (
+      !validateWorkspaceContext(
+        req,
+        res
+      )
+    ) {
+      return;
+    }
+
+    // -----------------------------------------------------
+    // GET TASKS
+    // -----------------------------------------------------
+
+    const tasks =
+      await Task.find({
+        workspaceId,
       })
-      .populate({
-        path: "createdBy",
-        select:
-          "name email projectRole currentJob",
-      })
-      .sort({
-        createdAt: -1,
-      });
+        .populate({
+          path: "assigneeIds",
+          select:
+            "name email projectRole currentJob",
+        })
+        .populate({
+          path: "createdBy",
+          select:
+            "name email projectRole currentJob",
+        })
+        .sort({
+          createdAt: -1,
+        });
 
     return res.status(200).json({
       success: true,
@@ -268,8 +681,15 @@ const getWorkspaceTasks = async (req, res) => {
 // =========================================================
 // GET SINGLE TASK
 // =========================================================
+//
+// The task must belong to the requested workspace.
+//
+// =========================================================
 
-const getSingleTask = async (req, res) => {
+const getSingleTask = async (
+  req,
+  res
+) => {
   try {
     const {
       workspaceId,
@@ -277,34 +697,59 @@ const getSingleTask = async (req, res) => {
     } = req.params;
 
     // -----------------------------------------------------
-    // VALIDATE TASK ID
+    // VALIDATE IDS
     // -----------------------------------------------------
 
-    if (!mongoose.isValidObjectId(taskId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid task ID",
-      });
+    if (
+      !validateWorkspaceId(
+        workspaceId,
+        res
+      )
+    ) {
+      return;
+    }
+
+    if (
+      !validateTaskId(
+        taskId,
+        res
+      )
+    ) {
+      return;
+    }
+
+    // -----------------------------------------------------
+    // VALIDATE WORKSPACE MEMBERSHIP
+    // -----------------------------------------------------
+
+    if (
+      !validateWorkspaceContext(
+        req,
+        res
+      )
+    ) {
+      return;
     }
 
     // -----------------------------------------------------
     // FIND TASK
     // -----------------------------------------------------
 
-    const task = await Task.findOne({
-      _id: taskId,
-      workspaceId,
-    })
-      .populate({
-        path: "assigneeIds",
-        select:
-          "name email projectRole currentJob",
+    const task =
+      await Task.findOne({
+        _id: taskId,
+        workspaceId,
       })
-      .populate({
-        path: "createdBy",
-        select:
-          "name email projectRole currentJob",
-      });
+        .populate({
+          path: "assigneeIds",
+          select:
+            "name email projectRole currentJob",
+        })
+        .populate({
+          path: "createdBy",
+          select:
+            "name email projectRole currentJob",
+        });
 
     if (!task) {
       return res.status(404).json({
@@ -336,9 +781,8 @@ const getSingleTask = async (req, res) => {
 // UPDATE TASK
 // =========================================================
 //
-// Any active member of the workspace can update a task.
+// Any active workspace member can update:
 //
-// Fields that can be updated:
 // - title
 // - description
 // - status
@@ -350,7 +794,10 @@ const getSingleTask = async (req, res) => {
 //
 // =========================================================
 
-const updateTask = async (req, res) => {
+const updateTask = async (
+  req,
+  res
+) => {
   try {
     const {
       workspaceId,
@@ -367,24 +814,49 @@ const updateTask = async (req, res) => {
     } = req.body;
 
     // -----------------------------------------------------
-    // VALIDATE TASK ID
+    // VALIDATE IDS
     // -----------------------------------------------------
 
-    if (!mongoose.isValidObjectId(taskId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid task ID",
-      });
+    if (
+      !validateWorkspaceId(
+        workspaceId,
+        res
+      )
+    ) {
+      return;
+    }
+
+    if (
+      !validateTaskId(
+        taskId,
+        res
+      )
+    ) {
+      return;
     }
 
     // -----------------------------------------------------
-    // FIND TASK INSIDE THIS WORKSPACE
+    // VALIDATE WORKSPACE MEMBERSHIP
     // -----------------------------------------------------
 
-    const task = await Task.findOne({
-      _id: taskId,
-      workspaceId,
-    });
+    if (
+      !validateWorkspaceContext(
+        req,
+        res
+      )
+    ) {
+      return;
+    }
+
+    // -----------------------------------------------------
+    // FIND TASK
+    // -----------------------------------------------------
+
+    const task =
+      await Task.findOne({
+        _id: taskId,
+        workspaceId,
+      });
 
     if (!task) {
       return res.status(404).json({
@@ -395,7 +867,7 @@ const updateTask = async (req, res) => {
     }
 
     // -----------------------------------------------------
-    // CHECK THAT SOMETHING WAS PROVIDED
+    // REQUIRE AT LEAST ONE FIELD
     // -----------------------------------------------------
 
     if (
@@ -417,7 +889,9 @@ const updateTask = async (req, res) => {
     // UPDATE TITLE
     // -----------------------------------------------------
 
-    if (title !== undefined) {
+    if (
+      title !== undefined
+    ) {
       if (
         typeof title !== "string" ||
         !title.trim()
@@ -429,15 +903,35 @@ const updateTask = async (req, res) => {
         });
       }
 
-      task.title = title.trim();
+      const trimmedTitle =
+        title.trim();
+
+      if (
+        trimmedTitle.length >
+        MAX_TITLE_LENGTH
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Task title cannot exceed 200 characters",
+        });
+      }
+
+      task.title =
+        trimmedTitle;
     }
 
     // -----------------------------------------------------
     // UPDATE DESCRIPTION
     // -----------------------------------------------------
 
-    if (description !== undefined) {
-      if (typeof description !== "string") {
+    if (
+      description !== undefined
+    ) {
+      if (
+        typeof description !==
+        "string"
+      ) {
         return res.status(400).json({
           success: false,
           message:
@@ -445,22 +939,38 @@ const updateTask = async (req, res) => {
         });
       }
 
-      task.description = description.trim();
+      const trimmedDescription =
+        description.trim();
+
+      if (
+        trimmedDescription.length >
+        MAX_DESCRIPTION_LENGTH
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Task description cannot exceed 2000 characters",
+        });
+      }
+
+      task.description =
+        trimmedDescription;
     }
 
     // -----------------------------------------------------
     // UPDATE STATUS
     // -----------------------------------------------------
 
-    if (status !== undefined) {
-      const allowedStatuses = [
-        "todo",
-        "doing",
-        "review",
-        "done",
-      ];
-
-      if (!allowedStatuses.includes(status)) {
+    if (
+      status !== undefined
+    ) {
+      if (
+        typeof status !==
+          "string" ||
+        !ALLOWED_STATUSES.includes(
+          status
+        )
+      ) {
         return res.status(400).json({
           success: false,
           message:
@@ -468,18 +978,21 @@ const updateTask = async (req, res) => {
         });
       }
 
-      task.status = status;
+      task.status =
+        status;
 
       // ---------------------------------------------------
-      // COMPLETED AT LOGIC
+      // COMPLETION DATE LOGIC
       // ---------------------------------------------------
 
       if (status === "done") {
         if (!task.completedAt) {
-          task.completedAt = new Date();
+          task.completedAt =
+            new Date();
         }
       } else {
-        task.completedAt = null;
+        task.completedAt =
+          null;
       }
     }
 
@@ -487,14 +1000,16 @@ const updateTask = async (req, res) => {
     // UPDATE PRIORITY
     // -----------------------------------------------------
 
-    if (priority !== undefined) {
-      const allowedPriorities = [
-        "High",
-        "Medium",
-        "Low",
-      ];
-
-      if (!allowedPriorities.includes(priority)) {
+    if (
+      priority !== undefined
+    ) {
+      if (
+        typeof priority !==
+          "string" ||
+        !ALLOWED_PRIORITIES.includes(
+          priority
+        )
+      ) {
         return res.status(400).json({
           success: false,
           message:
@@ -502,104 +1017,67 @@ const updateTask = async (req, res) => {
         });
       }
 
-      task.priority = priority;
+      task.priority =
+        priority;
     }
 
     // -----------------------------------------------------
     // UPDATE ASSIGNEES
     // -----------------------------------------------------
 
-    if (assigneeIds !== undefined) {
-      if (!Array.isArray(assigneeIds)) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "assigneeIds must be an array",
-        });
-      }
-
-      const normalizedAssigneeIds = [
-        ...new Set(
-          assigneeIds.map((id) => String(id))
-        ),
-      ];
-
-      // ---------------------------------------------------
-      // CHECK OBJECT IDS
-      // ---------------------------------------------------
-
-      for (const assigneeId of normalizedAssigneeIds) {
-        if (!mongoose.isValidObjectId(assigneeId)) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "One or more assignee IDs are invalid",
-          });
-        }
-      }
-
-      // ---------------------------------------------------
-      // CHECK ACTIVE WORKSPACE MEMBERS
-      // ---------------------------------------------------
-
-      const activeMemberIds =
-        req.workspace.members
-          .filter(
-            (member) =>
-              member.status === "active"
-          )
-          .map((member) =>
-            String(member.user)
-          );
-
-      const invalidAssigneeIds =
-        normalizedAssigneeIds.filter(
-          (assigneeId) =>
-            !activeMemberIds.includes(
-              assigneeId
-            )
+    if (
+      assigneeIds !== undefined
+    ) {
+      const assigneeValidation =
+        validateAssigneeIds(
+          assigneeIds,
+          req.workspace
         );
 
-      if (invalidAssigneeIds.length > 0) {
+      if (
+        !assigneeValidation.valid
+      ) {
         return res.status(400).json({
           success: false,
           message:
-            "Every assignee must be an active member of this workspace",
-          invalidAssigneeIds,
+            assigneeValidation.message,
+          ...(assigneeValidation.invalidAssigneeIds
+            ? {
+                invalidAssigneeIds:
+                  assigneeValidation.invalidAssigneeIds,
+              }
+            : {}),
         });
       }
 
       task.assigneeIds =
-        normalizedAssigneeIds;
+        assigneeValidation.assigneeIds;
     }
 
     // -----------------------------------------------------
     // UPDATE DEADLINE
     // -----------------------------------------------------
 
-    if (deadline !== undefined) {
+    if (
+      deadline !== undefined
+    ) {
+      const deadlineValidation =
+        parseDeadline(
+          deadline
+        );
+
       if (
-        deadline === null ||
-        deadline === ""
+        !deadlineValidation.valid
       ) {
-        task.deadline = null;
-      } else {
-        const parsedDeadline =
-          new Date(deadline);
-
-        if (
-          Number.isNaN(
-            parsedDeadline.getTime()
-          )
-        ) {
-          return res.status(400).json({
-            success: false,
-            message: "Invalid deadline",
-          });
-        }
-
-        task.deadline = parsedDeadline;
+        return res.status(400).json({
+          success: false,
+          message:
+            deadlineValidation.message,
+        });
       }
+
+      task.deadline =
+        deadlineValidation.value;
     }
 
     // -----------------------------------------------------
@@ -609,25 +1087,17 @@ const updateTask = async (req, res) => {
     await task.save();
 
     // -----------------------------------------------------
-    // POPULATE USER REFERENCES
+    // POPULATE REFERENCES
     // -----------------------------------------------------
 
-    await task.populate([
-      {
-        path: "assigneeIds",
-        select:
-          "name email projectRole currentJob",
-      },
-      {
-        path: "createdBy",
-        select:
-          "name email projectRole currentJob",
-      },
-    ]);
+    await populateTaskUsers(
+      task
+    );
 
     return res.status(200).json({
       success: true,
-      message: "Task updated successfully",
+      message:
+        "Task updated successfully",
       task,
     });
   } catch (error) {
@@ -636,14 +1106,16 @@ const updateTask = async (req, res) => {
       error
     );
 
-    if (error.name === "ValidationError") {
-      const messages = Object.values(
-        error.errors
-      ).map((item) => item.message);
-
+    if (
+      error.name ===
+      "ValidationError"
+    ) {
       return res.status(400).json({
         success: false,
-        message: messages.join(", "),
+        message:
+          getValidationMessages(
+            error
+          ).join(", "),
       });
     }
 
@@ -655,16 +1127,18 @@ const updateTask = async (req, res) => {
   }
 };
 
-
 // =========================================================
 // DELETE TASK
 // =========================================================
 //
-// Any active member of the workspace can delete a task.
+// Any active workspace member can delete a task.
 //
 // =========================================================
 
-const deleteTask = async (req, res) => {
+const deleteTask = async (
+  req,
+  res
+) => {
   try {
     const {
       workspaceId,
@@ -672,24 +1146,49 @@ const deleteTask = async (req, res) => {
     } = req.params;
 
     // -----------------------------------------------------
-    // VALIDATE TASK ID
+    // VALIDATE IDS
     // -----------------------------------------------------
 
-    if (!mongoose.isValidObjectId(taskId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid task ID",
-      });
+    if (
+      !validateWorkspaceId(
+        workspaceId,
+        res
+      )
+    ) {
+      return;
+    }
+
+    if (
+      !validateTaskId(
+        taskId,
+        res
+      )
+    ) {
+      return;
     }
 
     // -----------------------------------------------------
-    // FIND TASK INSIDE THIS WORKSPACE
+    // VALIDATE WORKSPACE MEMBERSHIP
     // -----------------------------------------------------
 
-    const task = await Task.findOne({
-      _id: taskId,
-      workspaceId,
-    });
+    if (
+      !validateWorkspaceContext(
+        req,
+        res
+      )
+    ) {
+      return;
+    }
+
+    // -----------------------------------------------------
+    // FIND TASK
+    // -----------------------------------------------------
+
+    const task =
+      await Task.findOne({
+        _id: taskId,
+        workspaceId,
+      });
 
     if (!task) {
       return res.status(404).json({
@@ -708,13 +1207,10 @@ const deleteTask = async (req, res) => {
       workspaceId,
     });
 
-    // -----------------------------------------------------
-    // RESPONSE
-    // -----------------------------------------------------
-
     return res.status(200).json({
       success: true,
-      message: "Task deleted successfully",
+      message:
+        "Task deleted successfully",
       taskId,
     });
   } catch (error) {
