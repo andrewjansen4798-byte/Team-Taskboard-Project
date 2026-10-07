@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+
 const Workspace = require("../models/Workspace");
 
 // =========================================================
@@ -9,12 +10,29 @@ const Workspace = require("../models/Workspace");
 //
 // requireWorkspaceRole("leader")
 //
-// This middleware checks the authenticated user's role
-// inside the specific workspace from req.params.workspaceId.
+// This middleware checks the authenticated user's active
+// membership and role inside the workspace identified by
+// req.params.workspaceId.
+//
+// Valid workspace roles:
+// - leader
+// - member
 //
 // =========================================================
 
 const requireWorkspaceRole = (requiredRole) => {
+  // -------------------------------------------------------
+  // VALIDATE REQUIRED ROLE
+  // -------------------------------------------------------
+
+  const validRoles = ["leader", "member"];
+
+  if (!validRoles.includes(requiredRole)) {
+    throw new Error(
+      `Invalid workspace role "${requiredRole}". Expected "leader" or "member".`
+    );
+  }
+
   return async (req, res, next) => {
     try {
       // -----------------------------------------------------
@@ -41,9 +59,7 @@ const requireWorkspaceRole = (requiredRole) => {
       // FIND WORKSPACE
       // -----------------------------------------------------
 
-      const workspace = await Workspace.findById(
-        workspaceId
-      );
+      const workspace = await Workspace.findById(workspaceId);
 
       if (!workspace) {
         return res.status(404).json({
@@ -64,7 +80,7 @@ const requireWorkspaceRole = (requiredRole) => {
       }
 
       // -----------------------------------------------------
-      // FIND CURRENT USER'S MEMBERSHIP
+      // FIND CURRENT USER'S ACTIVE MEMBERSHIP
       // -----------------------------------------------------
 
       const membership = workspace.members.find(
@@ -88,18 +104,21 @@ const requireWorkspaceRole = (requiredRole) => {
       if (membership.role !== requiredRole) {
         return res.status(403).json({
           success: false,
-          message: "Team Leader permission required",
+          message:
+            requiredRole === "leader"
+              ? "Team Leader permission required"
+              : `Workspace ${requiredRole} permission required`,
         });
       }
 
       // -----------------------------------------------------
-      // ATTACH WORKSPACE INFORMATION TO REQUEST
+      // ATTACH WORKSPACE CONTEXT
       // -----------------------------------------------------
 
       req.workspace = workspace;
       req.workspaceMember = membership;
 
-      next();
+      return next();
     } catch (error) {
       console.error(
         "Workspace role authorization error:",

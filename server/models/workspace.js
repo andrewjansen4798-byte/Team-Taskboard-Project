@@ -116,26 +116,56 @@ const workspaceSchema = new mongoose.Schema(
 );
 
 // =========================================================
-// VALIDATE TEAM LEADER COUNT
+// VALIDATE WORKSPACE MEMBERSHIP STRUCTURE
 // =========================================================
 //
-// Every workspace must have exactly ONE active Team Leader.
-//
-// The workspace creator becomes the initial Team Leader.
-// A normal member cannot become a second Team Leader.
+// Each user should appear only once in the workspace's
+// members array. Removing a member changes their status
+// to inactive rather than creating another membership entry.
 //
 // =========================================================
 
 workspaceSchema.pre("validate", function () {
-  const activeLeaderCount = this.members.filter(
+  const memberUserIds = this.members.map((member) =>
+    String(member.user)
+  );
+
+  const uniqueMemberUserIds = new Set(memberUserIds);
+
+  if (memberUserIds.length !== uniqueMemberUserIds.size) {
+    throw new Error(
+      "A user cannot have duplicate membership entries in the same workspace"
+    );
+  }
+
+  // -------------------------------------------------------
+  // CHECK ACTIVE TEAM LEADER COUNT
+  // -------------------------------------------------------
+
+  const activeLeaders = this.members.filter(
     (member) =>
       member.role === "leader" &&
       member.status === "active"
-  ).length;
+  );
 
-  if (activeLeaderCount !== 1) {
+  if (activeLeaders.length !== 1) {
     throw new Error(
       "A workspace must have exactly one active Team Leader"
+    );
+  }
+
+  // -------------------------------------------------------
+  // ENSURE CREATOR IS THE ACTIVE TEAM LEADER
+  // -------------------------------------------------------
+
+  const activeLeader = activeLeaders[0];
+
+  if (
+    !activeLeader ||
+    String(activeLeader.user) !== String(this.createdBy)
+  ) {
+    throw new Error(
+      "The workspace creator must be the active Team Leader"
     );
   }
 });

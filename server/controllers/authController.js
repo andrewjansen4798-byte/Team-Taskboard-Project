@@ -12,8 +12,7 @@ const Task = require("../models/task");
 const PASSWORD_SALT_ROUNDS = 12;
 const JWT_EXPIRES_IN = "7d";
 
-const EMAIL_REGEX =
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // =========================================================
 // HELPER - NORMALIZE EMAIL
@@ -86,26 +85,6 @@ const createAuthToken = (userId) => {
 // =========================================================
 // REGISTER USER
 // =========================================================
-//
-// Flow:
-//
-// Request
-//   ↓
-// Validate required fields
-//   ↓
-// Normalize email
-//   ↓
-// Validate name/email/password
-//   ↓
-// Check duplicate email
-//   ↓
-// Hash password
-//   ↓
-// Create User
-//   ↓
-// Return safe user response
-//
-// =========================================================
 
 const registerUser = async (req, res) => {
   try {
@@ -134,8 +113,7 @@ const registerUser = async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Name, email and password are required",
+        message: "Name, email and password are required",
       });
     }
 
@@ -144,8 +122,7 @@ const registerUser = async (req, res) => {
     // -------------------------------------------------------
 
     const trimmedName = name.trim();
-    const normalizedEmail =
-      normalizeEmail(email);
+    const normalizedEmail = normalizeEmail(email);
 
     // -------------------------------------------------------
     // VALIDATE NAME
@@ -216,10 +193,9 @@ const registerUser = async (req, res) => {
     // CHECK DUPLICATE EMAIL
     // -------------------------------------------------------
 
-    const existingUser =
-      await User.findOne({
-        email: normalizedEmail,
-      });
+    const existingUser = await User.findOne({
+      email: normalizedEmail,
+    });
 
     if (existingUser) {
       return res.status(409).json({
@@ -233,30 +209,28 @@ const registerUser = async (req, res) => {
     // HASH PASSWORD
     // -------------------------------------------------------
 
-    const hashedPassword =
-      await bcrypt.hash(
-        password,
-        PASSWORD_SALT_ROUNDS
-      );
+    const hashedPassword = await bcrypt.hash(
+      password,
+      PASSWORD_SALT_ROUNDS
+    );
 
     // -------------------------------------------------------
     // CREATE USER
     // -------------------------------------------------------
 
-    const user =
-      await User.create({
-        name: trimmedName,
-        email: normalizedEmail,
-        password: hashedPassword,
-        age,
-        gender,
-        projectRole,
-        currentJob,
-        phone,
-        location,
-        timeZone,
-        bio,
-      });
+    const user = await User.create({
+      name: trimmedName,
+      email: normalizedEmail,
+      password: hashedPassword,
+      age,
+      gender,
+      projectRole,
+      currentJob,
+      phone,
+      location,
+      timeZone,
+      bio,
+    });
 
     // -------------------------------------------------------
     // SUCCESS RESPONSE
@@ -268,15 +242,11 @@ const registerUser = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message:
-        "User registered successfully",
+      message: "User registered successfully",
       user: buildUserResponse(user),
     });
   } catch (error) {
-    console.error(
-      "Register user error:",
-      error
-    );
+    console.error("Register user error:", error);
 
     // -------------------------------------------------------
     // DUPLICATE EMAIL
@@ -294,21 +264,14 @@ const registerUser = async (req, res) => {
     // MONGOOSE VALIDATION ERROR
     // -------------------------------------------------------
 
-    if (
-      error.name ===
-      "ValidationError"
-    ) {
-      const messages =
-        Object.values(
-          error.errors || {}
-        ).map(
-          (item) => item.message
-        );
+    if (error.name === "ValidationError") {
+      const messages = Object.values(
+        error.errors || {}
+      ).map((item) => item.message);
 
       return res.status(400).json({
         success: false,
-        message:
-          messages.join(", "),
+        message: messages.join(", "),
       });
     }
 
@@ -326,24 +289,6 @@ const registerUser = async (req, res) => {
 
 // =========================================================
 // LOGIN USER
-// =========================================================
-//
-// Flow:
-//
-// Request
-//   ↓
-// Validate email/password
-//   ↓
-// Normalize email
-//   ↓
-// Find User
-//   ↓
-// Compare password with bcrypt
-//   ↓
-// Create JWT
-//   ↓
-// Return token + safe user
-//
 // =========================================================
 
 const loginUser = async (req, res) => {
@@ -393,10 +338,9 @@ const loginUser = async (req, res) => {
     // FIND USER
     // -------------------------------------------------------
 
-    const user =
-      await User.findOne({
-        email: normalizedEmail,
-      });
+    const user = await User.findOne({
+      email: normalizedEmail,
+    });
 
     if (!user) {
       return res.status(401).json({
@@ -441,11 +385,9 @@ const loginUser = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message:
-        "Login successful",
+      message: "Login successful",
       token,
-      user:
-        buildUserResponse(user),
+      user: buildUserResponse(user),
     });
   } catch (error) {
     console.error(
@@ -485,7 +427,6 @@ const loginUser = async (req, res) => {
 // =========================================================
 //
 // authMiddleware has already:
-//
 // 1. Verified JWT
 // 2. Found the user
 // 3. Removed password
@@ -493,10 +434,7 @@ const loginUser = async (req, res) => {
 //
 // =========================================================
 
-const getCurrentUser = async (
-  req,
-  res
-) => {
+const getCurrentUser = async (req, res) => {
   try {
     return res.status(200).json({
       success: true,
@@ -535,10 +473,8 @@ const changePassword = async (
     // -------------------------------------------------------
 
     if (
-      typeof currentPassword !==
-        "string" ||
-      typeof newPassword !==
-        "string" ||
+      typeof currentPassword !== "string" ||
+      typeof newPassword !== "string" ||
       !currentPassword ||
       !newPassword
     ) {
@@ -680,7 +616,8 @@ const changeEmail = async (
     if (
       typeof currentPassword !==
         "string" ||
-      typeof newEmail !== "string" ||
+      typeof newEmail !==
+        "string" ||
       !currentPassword ||
       !newEmail.trim()
     ) {
@@ -702,7 +639,11 @@ const changeEmail = async (
     // VALIDATE EMAIL
     // -------------------------------------------------------
 
-    if (!isValidEmail(normalizedEmail)) {
+    if (
+      !isValidEmail(
+        normalizedEmail
+      )
+    ) {
       return res.status(400).json({
         success: false,
         message:
@@ -766,7 +707,8 @@ const changeEmail = async (
 
     const existingUser =
       await User.findOne({
-        email: normalizedEmail,
+        email:
+          normalizedEmail,
         _id: {
           $ne: user._id,
         },
@@ -802,13 +744,23 @@ const changeEmail = async (
       error
     );
 
-    if (error.code === 11000) {
+    // -------------------------------------------------------
+    // DUPLICATE EMAIL
+    // -------------------------------------------------------
+
+    if (
+      error.code === 11000
+    ) {
       return res.status(409).json({
         success: false,
         message:
           "An account with this email already exists",
       });
     }
+
+    // -------------------------------------------------------
+    // VALIDATION ERROR
+    // -------------------------------------------------------
 
     if (
       error.name ===
@@ -896,7 +848,8 @@ const deleteAccount = async (
 
     const workspaces =
       await Workspace.find({
-        "members.user": userId,
+        "members.user":
+          userId,
       }).session(session);
 
     // -------------------------------------------------------
@@ -909,8 +862,12 @@ const deleteAccount = async (
           workspace.members.some(
             (member) =>
               member.user &&
-              String(member.user) ===
-                String(userId) &&
+              String(
+                member.user
+              ) ===
+                String(
+                  userId
+                ) &&
               member.status ===
                 "active" &&
               member.role ===
@@ -948,7 +905,8 @@ const deleteAccount = async (
 
     const createdTasks =
       await Task.find({
-        createdBy: userId,
+        createdBy:
+          userId,
       }).session(session);
 
     // -------------------------------------------------------
@@ -964,9 +922,9 @@ const deleteAccount = async (
             String(
               workspace._id
             ) ===
-            String(
-              task.workspaceId
-            )
+              String(
+                task.workspaceId
+              )
         );
 
       // -----------------------------------------------------
@@ -976,10 +934,13 @@ const deleteAccount = async (
       if (!targetWorkspace) {
         targetWorkspace =
           await Workspace.findOne({
-            _id: task.workspaceId,
+            _id:
+              task.workspaceId,
             "members.user":
               userId,
-          }).session(session);
+          }).session(
+            session
+          );
       }
 
       if (!targetWorkspace) {
@@ -1040,11 +1001,13 @@ const deleteAccount = async (
 
     await Task.updateMany(
       {
-        assigneeIds: userId,
+        assigneeIds:
+          userId,
       },
       {
         $pull: {
-          assigneeIds: userId,
+          assigneeIds:
+            userId,
         },
       },
       {
@@ -1058,7 +1021,8 @@ const deleteAccount = async (
 
     await Workspace.updateMany(
       {
-        "members.user": userId,
+        "members.user":
+          userId,
       },
       {
         $set: {
@@ -1089,7 +1053,9 @@ const deleteAccount = async (
         }
       );
 
-    if (!deletedUser) {
+    if (
+      !deletedUser
+    ) {
       await session.abortTransaction();
 
       return res.status(404).json({

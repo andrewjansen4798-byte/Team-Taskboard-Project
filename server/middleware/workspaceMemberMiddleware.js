@@ -6,11 +6,12 @@ const Workspace = require("../models/Workspace");
 // CHECK ACTIVE WORKSPACE MEMBERSHIP
 // =========================================================
 //
-// This middleware allows any active member of a workspace
-// to access member-level workspace features.
+// Allows any active workspace member to access
+// workspace-level member features.
 //
-// Unlike workspaceRoleMiddleware, this does NOT require
-// the user to be a Team Leader.
+// This middleware does NOT require Team Leader role.
+// Use workspaceRoleMiddleware when a specific role
+// such as "leader" is required.
 //
 // =========================================================
 
@@ -79,13 +80,13 @@ const requireWorkspaceMember = async (req, res, next) => {
     }
 
     // -----------------------------------------------------
-    // ATTACH WORKSPACE INFORMATION
+    // ATTACH WORKSPACE CONTEXT
     // -----------------------------------------------------
 
     req.workspace = workspace;
     req.workspaceMember = membership;
 
-    next();
+    return next();
   } catch (error) {
     console.error(
       "Workspace member authorization error:",

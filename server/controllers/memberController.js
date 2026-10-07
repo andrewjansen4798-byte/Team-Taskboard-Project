@@ -1,38 +1,281 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 const Workspace = require("../models/Workspace");
 const User = require("../models/User");
 
 // =========================================================
+// CONSTANTS
+// =========================================================
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const NAME_MIN_LENGTH = 2;
+const NAME_MAX_LENGTH = 100;
+const BIO_MAX_LENGTH = 500;
+
+// =========================================================
+// HELPERS
+// =========================================================
+
+// =========================================================
+// VALIDATION ERROR MESSAGES
+// =========================================================
+
+const getValidationMessages = (error) => {
+  return Object.values(
+    error.errors || {}
+  ).map((item) => item.message);
+};
+
+// =========================================================
+// SAFE MEMBER RESPONSE
+// =========================================================
+//
+// Never expose:
+// - password
+// - password-related fields
+//
+// =========================================================
+
+const buildSafeMember = (
+  user,
+  membership,
+  workspaceId
+) => {
+  return {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    age: user.age,
+    gender: user.gender,
+    projectRole: user.projectRole,
+    currentJob: user.currentJob,
+    phone: user.phone,
+    location: user.location,
+    timeZone: user.timeZone,
+    bio: user.bio,
+    workspaceId,
+    role: membership
+      ? membership.role
+      : null,
+    status: membership
+      ? membership.status
+      : null,
+    joinedAt: membership
+      ? membership.joinedAt
+      : null,
+  };
+};
+
+// =========================================================
+// VALIDATE WORKSPACE CONTEXT
+// =========================================================
+//
+// The route middleware should already attach:
+// - req.workspace
+// - req.workspaceMember
+//
+// This helper provides an additional defensive check.
+//
+// =========================================================
+
+const validateWorkspaceContext = (
+  req,
+  res
+) => {
+  const {
+    workspaceId,
+  } = req.params;
+
+  // -------------------------------------------------------
+  // VALIDATE WORKSPACE ID
+  // -------------------------------------------------------
+
+  if (
+    !mongoose.isValidObjectId(
+      workspaceId
+    )
+  ) {
+    res.status(400).json({
+      success: false,
+      message:
+        "Invalid workspace ID",
+    });
+
+    return false;
+  }
+
+  // -------------------------------------------------------
+  // CHECK WORKSPACE CONTEXT
+  // -------------------------------------------------------
+
+  if (!req.workspace) {
+    res.status(500).json({
+      success: false,
+      message:
+        "Workspace context is unavailable",
+    });
+
+    return false;
+  }
+
+  if (
+    String(req.workspace._id) !==
+    String(workspaceId)
+  ) {
+    res.status(403).json({
+      success: false,
+      message:
+        "Workspace access denied",
+    });
+
+    return false;
+  }
+
+  // -------------------------------------------------------
+  // CHECK WORKSPACE STATUS
+  // -------------------------------------------------------
+
+  if (
+    req.workspace.status !==
+    "active"
+  ) {
+    res.status(403).json({
+      success: false,
+      message:
+        "This workspace is inactive",
+    });
+
+    return false;
+  }
+
+  // -------------------------------------------------------
+  // CHECK MEMBERSHIP DATA
+  // -------------------------------------------------------
+
+  if (
+    !Array.isArray(
+      req.workspace.members
+    )
+  ) {
+    res.status(500).json({
+      success: false,
+      message:
+        "Workspace membership data is unavailable",
+    });
+
+    return false;
+  }
+
+  // -------------------------------------------------------
+  // CHECK REQUESTER MEMBERSHIP
+  // -------------------------------------------------------
+
+  const requesterMembership =
+    req.workspace.members.find(
+      (member) =>
+        String(member.user) ===
+          String(req.user._id) &&
+        member.status ===
+          "active"
+    );
+
+  if (!requesterMembership) {
+    res.status(403).json({
+      success: false,
+      message:
+        "You are not an active member of this workspace",
+    });
+
+    return false;
+  }
+
+  // Keep middleware-created membership
+  // synchronized with the controller context.
+
+  req.workspaceMember =
+    requesterMembership;
+
+  return true;
+};
+
+// =========================================================
+// CHECK LEADER PERMISSION
+// =========================================================
+//
+// Used as an additional controller-level safeguard for
+// endpoints that must only be accessible by the active
+// Team Leader.
+//
+// =========================================================
+
+const requireLeaderPermission = (
+  req,
+  res
+) => {
+  const membership =
+    req.workspaceMember;
+
+  if (
+    !membership ||
+    membership.status !==
+      "active" ||
+    membership.role !==
+      "leader"
+  ) {
+    res.status(403).json({
+      success: false,
+      message:
+        "Team Leader permission required",
+    });
+
+    return false;
+  }
+
+  return true;
+};
+
+// =========================================================
 // GET WORKSPACE MEMBERS
 // =========================================================
 //
-// Any active workspace member can view the active members.
+// Any active workspace member can view active members.
 //
-// Removed/inactive members are not returned.
+// Inactive members are not returned.
+//
 // =========================================================
 
-const getWorkspaceMembers = async (req, res) => {
+const getWorkspaceMembers = async (
+  req,
+  res
+) => {
   try {
-    const { workspaceId } = req.params;
+    const {
+      workspaceId,
+    } = req.params;
 
-    // -----------------------------------------------------
-    // VALIDATE WORKSPACE ID
-    // -----------------------------------------------------
+    // -------------------------------------------------------
+    // VALIDATE WORKSPACE CONTEXT
+    // -------------------------------------------------------
 
-    if (!mongoose.isValidObjectId(workspaceId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid workspace ID",
-      });
+    if (
+      !validateWorkspaceContext(
+        req,
+        res
+      )
+    ) {
+      return;
     }
 
-    // -----------------------------------------------------
-    // FIND WORKSPACE
-    // -----------------------------------------------------
+    // -------------------------------------------------------
+    // FIND WORKSPACE WITH SAFE USER DATA
+    // -------------------------------------------------------
 
-    const workspace = await Workspace.findById(workspaceId)
-      .populate({
+    const workspace =
+      await Workspace.findById(
+        workspaceId
+      ).populate({
         path: "members.user",
         select:
           "name email age gender projectRole currentJob phone location timeZone bio",
@@ -41,21 +284,36 @@ const getWorkspaceMembers = async (req, res) => {
     if (!workspace) {
       return res.status(404).json({
         success: false,
-        message: "Workspace not found",
+        message:
+          "Workspace not found",
       });
     }
 
-    // -----------------------------------------------------
-    // ONLY RETURN ACTIVE MEMBERS
-    // -----------------------------------------------------
+    // -------------------------------------------------------
+    // ACTIVE MEMBERS ONLY
+    // -------------------------------------------------------
 
-    const activeMembers = workspace.members.filter(
-      (member) => member.status === "active"
-    );
+    const activeMembers =
+      workspace.members.filter(
+        (member) =>
+          member.status ===
+            "active" &&
+          member.user
+      );
 
-    // -----------------------------------------------------
-    // RESPONSE
-    // -----------------------------------------------------
+    // -------------------------------------------------------
+    // SAFE MEMBER RESPONSE
+    // -------------------------------------------------------
+
+    const members =
+      activeMembers.map(
+        (membership) =>
+          buildSafeMember(
+            membership.user,
+            membership,
+            workspace._id
+          )
+      );
 
     return res.status(200).json({
       success: true,
@@ -63,11 +321,14 @@ const getWorkspaceMembers = async (req, res) => {
         id: workspace._id,
         name: workspace.name,
       },
-      count: activeMembers.length,
-      members: activeMembers,
+      count: members.length,
+      members,
     });
   } catch (error) {
-    console.error("Get workspace members error:", error);
+    console.error(
+      "Get workspace members error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -83,202 +344,279 @@ const getWorkspaceMembers = async (req, res) => {
 //
 // TEAM LEADER ONLY
 //
-// The route must use:
+// New member:
+//   role   = member
+//   status = active
 //
-// requireWorkspaceRole("leader")
-//
-// New members are always:
-// role   = "member"
-// status = "active"
+// An inactive previous membership is reactivated.
 //
 // =========================================================
 
-const addWorkspaceMember = async (req, res) => {
+const addWorkspaceMember = async (
+  req,
+  res
+) => {
   try {
-    const { workspaceId } = req.params;
-    const { email } = req.body;
+    const {
+      workspaceId,
+    } = req.params;
 
-    // -----------------------------------------------------
-    // VALIDATE WORKSPACE ID
-    // -----------------------------------------------------
+    const {
+      email,
+    } = req.body;
 
-    if (!mongoose.isValidObjectId(workspaceId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid workspace ID",
-      });
+    // -------------------------------------------------------
+    // VALIDATE WORKSPACE CONTEXT
+    // -------------------------------------------------------
+
+    if (
+      !validateWorkspaceContext(
+        req,
+        res
+      )
+    ) {
+      return;
     }
 
-    // -----------------------------------------------------
+    // -------------------------------------------------------
+    // ADD MEMBER MUST BE LEADER
+    // -------------------------------------------------------
+
+    if (
+      !requireLeaderPermission(
+        req,
+        res
+      )
+    ) {
+      return;
+    }
+
+    // -------------------------------------------------------
     // VALIDATE EMAIL
-    // -----------------------------------------------------
+    // -------------------------------------------------------
 
-    if (!email || typeof email !== "string") {
+    if (
+      typeof email !==
+        "string" ||
+      !email.trim()
+    ) {
       return res.status(400).json({
         success: false,
-        message: "User email is required",
+        message:
+          "Member email is required",
       });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail =
+      email.trim().toLowerCase();
 
-    if (!normalizedEmail) {
+    if (
+      !EMAIL_REGEX.test(
+        normalizedEmail
+      )
+    ) {
       return res.status(400).json({
         success: false,
-        message: "User email is required",
+        message:
+          "Please enter a valid email address",
       });
     }
 
-    // -----------------------------------------------------
+    // -------------------------------------------------------
     // FIND USER
-    // -----------------------------------------------------
+    // -------------------------------------------------------
 
-    const user = await User.findOne({
-      email: normalizedEmail,
-    });
+    const user =
+      await User.findOne({
+        email:
+          normalizedEmail,
+      });
 
     if (!user) {
       return res.status(404).json({
         success: false,
         message:
-          "No registered user exists with this email",
+          "No registered user was found with this email",
       });
     }
 
-    // -----------------------------------------------------
-    // FIND WORKSPACE
-    // -----------------------------------------------------
-
-    const workspace = await Workspace.findById(workspaceId);
-
-    if (!workspace) {
-      return res.status(404).json({
-        success: false,
-        message: "Workspace not found",
-      });
-    }
-
-    // -----------------------------------------------------
-    // CHECK WORKSPACE STATUS
-    // -----------------------------------------------------
-
-    if (workspace.status !== "active") {
-      return res.status(403).json({
-        success: false,
-        message: "This workspace is inactive",
-      });
-    }
-
-    // -----------------------------------------------------
+    // -------------------------------------------------------
     // CHECK EXISTING MEMBERSHIP
-    // -----------------------------------------------------
+    // -------------------------------------------------------
 
-    const existingMember = workspace.members.find(
-      (member) =>
-        String(member.user) === String(user._id)
-    );
+    const existingMemberIndex =
+      req.workspace.members.findIndex(
+        (member) =>
+          String(
+            member.user
+          ) ===
+          String(
+            user._id
+          )
+      );
 
-    if (existingMember) {
-      // ---------------------------------------------------
-      // ALREADY ACTIVE
-      // ---------------------------------------------------
+    // -------------------------------------------------------
+    // ALREADY ACTIVE
+    // -------------------------------------------------------
 
-      if (existingMember.status === "active") {
+    if (
+      existingMemberIndex !==
+        -1 &&
+      req.workspace.members[
+        existingMemberIndex
+      ].status === "active"
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "This user is already a member of the workspace",
+      });
+    }
+
+    // -------------------------------------------------------
+    // REACTIVATE INACTIVE MEMBER
+    // -------------------------------------------------------
+
+    if (
+      existingMemberIndex !==
+      -1
+    ) {
+      const existingMember =
+        req.workspace.members[
+          existingMemberIndex
+        ];
+
+      // -----------------------------------------------------
+      // PROTECT WORKSPACE CREATOR / LEADER
+      // -----------------------------------------------------
+
+      if (
+        existingMember.role ===
+          "leader" ||
+        String(
+          existingMember.user
+        ) ===
+          String(
+            req.workspace.createdBy
+          )
+      ) {
         return res.status(409).json({
           success: false,
           message:
-            "This user is already a member of the workspace",
+            "The workspace creator and Team Leader cannot be reactivated as a normal member",
         });
       }
 
-      // ---------------------------------------------------
-      // REACTIVATE INACTIVE MEMBER
-      // ---------------------------------------------------
+      existingMember.role =
+        "member";
 
-      existingMember.status = "active";
-      existingMember.role = "member";
-      existingMember.joinedAt = new Date();
+      existingMember.status =
+        "active";
 
-      await workspace.save();
+      existingMember.joinedAt =
+        new Date();
+    }
 
-      await workspace.populate({
-        path: "members.user",
-        select:
-          "name email age gender projectRole currentJob phone location timeZone bio",
-      });
+    // -------------------------------------------------------
+    // ADD NEW MEMBER
+    // -------------------------------------------------------
 
-      const restoredMember = workspace.members.find(
-        (member) =>
-          String(member.user._id) ===
-          String(user._id)
-      );
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "Previous workspace member restored successfully",
-        member: restoredMember,
+    else {
+      req.workspace.members.push({
+        user: user._id,
+        role: "member",
+        status: "active",
+        joinedAt: new Date(),
       });
     }
 
-    // -----------------------------------------------------
-    // ADD NEW MEMBER
-    // -----------------------------------------------------
-
-    workspace.members.push({
-      user: user._id,
-      role: "member",
-      status: "active",
-      joinedAt: new Date(),
-    });
-
-    // -----------------------------------------------------
+    // -------------------------------------------------------
     // SAVE WORKSPACE
-    // -----------------------------------------------------
+    // -------------------------------------------------------
 
-    await workspace.save();
+    await req.workspace.save();
 
-    // -----------------------------------------------------
-    // POPULATE NEW MEMBER
-    // -----------------------------------------------------
+    // -------------------------------------------------------
+    // POPULATE SAFE USER DATA
+    // -------------------------------------------------------
 
-    await workspace.populate({
+    await req.workspace.populate({
       path: "members.user",
       select:
         "name email age gender projectRole currentJob phone location timeZone bio",
     });
 
-    const addedMember = workspace.members.find(
-      (member) =>
-        String(member.user._id) ===
-        String(user._id)
-    );
+    // -------------------------------------------------------
+    // FIND ADDED MEMBER
+    // -------------------------------------------------------
 
-    // -----------------------------------------------------
-    // RESPONSE
-    // -----------------------------------------------------
+    const membership =
+      req.workspace.members.find(
+        (member) =>
+          member.user &&
+          String(
+            member.user._id
+          ) ===
+            String(
+              user._id
+            ) &&
+          member.status ===
+            "active"
+      );
+
+    if (!membership) {
+      return res.status(500).json({
+        success: false,
+        message:
+          "Member was added but could not be loaded",
+      });
+    }
 
     return res.status(201).json({
       success: true,
       message:
         "Workspace member added successfully",
-      member: addedMember,
+      member:
+        buildSafeMember(
+          membership.user,
+          membership,
+          workspaceId
+        ),
     });
   } catch (error) {
-    console.error("Add workspace member error:", error);
+    console.error(
+      "Add workspace member error:",
+      error
+    );
 
-    // -----------------------------------------------------
-    // MONGOOSE VALIDATION ERROR
-    // -----------------------------------------------------
+    // -------------------------------------------------------
+    // DUPLICATE EMAIL / INDEX ERROR
+    // -------------------------------------------------------
 
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map(
-        (item) => item.message
-      );
+    if (
+      error.code === 11000
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Another account already uses this email",
+      });
+    }
 
+    // -------------------------------------------------------
+    // VALIDATION ERROR
+    // -------------------------------------------------------
+
+    if (
+      error.name ===
+      "ValidationError"
+    ) {
       return res.status(400).json({
         success: false,
-        message: messages.join(", "),
+        message:
+          getValidationMessages(
+            error
+          ).join(", "),
       });
     }
 
@@ -294,38 +632,35 @@ const addWorkspaceMember = async (req, res) => {
 // UPDATE WORKSPACE MEMBER
 // =========================================================
 //
-// Permission rules:
+// Normal Member:
+//   - can edit own profile
+//   - cannot edit another member
 //
-// TEAM LEADER:
-// ✅ Can edit own profile
-// ✅ Can edit another active workspace member
+// Team Leader:
+//   - can edit own profile
+//   - can edit another active member
 //
-// NORMAL MEMBER:
-// ✅ Can edit own profile
-// ❌ Cannot edit another member
+// Account email:
+//   - can only be changed by the account owner
+//   - current password is required
 //
-// Editable fields:
-// - name
-// - age
-// - gender
-// - projectRole
-// - currentJob
-// - email
-// - bio
-// - phone
-// - location
-// - timeZone
+// Password:
+//   - cannot be changed here
 //
-// Not editable here:
-// - password
-// - workspace role
-// - workspace membership status
+// Workspace role/status:
+//   - cannot be changed here
 //
 // =========================================================
 
-const updateWorkspaceMember = async (req, res) => {
+const updateWorkspaceMember = async (
+  req,
+  res
+) => {
   try {
-    const { workspaceId, userId } = req.params;
+    const {
+      workspaceId,
+      userId,
+    } = req.params;
 
     const {
       name,
@@ -334,97 +669,56 @@ const updateWorkspaceMember = async (req, res) => {
       projectRole,
       currentJob,
       email,
+      currentPassword,
       bio,
       phone,
       location,
       timeZone,
     } = req.body;
 
-    // -----------------------------------------------------
-    // VALIDATE WORKSPACE ID
-    // -----------------------------------------------------
+    // -------------------------------------------------------
+    // VALIDATE CONTEXT
+    // -------------------------------------------------------
 
-    if (!mongoose.isValidObjectId(workspaceId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid workspace ID",
-      });
+    if (
+      !validateWorkspaceContext(
+        req,
+        res
+      )
+    ) {
+      return;
     }
 
-    // -----------------------------------------------------
+    // -------------------------------------------------------
     // VALIDATE USER ID
-    // -----------------------------------------------------
+    // -------------------------------------------------------
 
-    if (!mongoose.isValidObjectId(userId)) {
+    if (
+      !mongoose.isValidObjectId(
+        userId
+      )
+    ) {
       return res.status(400).json({
-        success: false,
-        message: "Invalid user ID",
-      });
-    }
-
-    // -----------------------------------------------------
-    // FIND WORKSPACE
-    // -----------------------------------------------------
-
-    const workspace = await Workspace.findById(workspaceId);
-
-    if (!workspace) {
-      return res.status(404).json({
-        success: false,
-        message: "Workspace not found",
-      });
-    }
-
-    // -----------------------------------------------------
-    // CHECK WORKSPACE STATUS
-    // -----------------------------------------------------
-
-    if (workspace.status !== "active") {
-      return res.status(403).json({
-        success: false,
-        message: "This workspace is inactive",
-      });
-    }
-
-    // -----------------------------------------------------
-    // PERMISSION CHECK
-    // -----------------------------------------------------
-    //
-    // Normal member:
-    //     userId MUST equal req.user._id
-    //
-    // Team Leader:
-    //     can edit self or another member
-    //
-    // The route uses requireWorkspaceMember, which provides:
-    // req.workspaceMember
-    //
-    // -----------------------------------------------------
-
-    const isEditingSelf =
-      String(req.user._id) === String(userId);
-
-    const isTeamLeader =
-      req.workspaceMember &&
-      req.workspaceMember.role === "leader";
-
-    if (!isEditingSelf && !isTeamLeader) {
-      return res.status(403).json({
         success: false,
         message:
-          "You can only edit your own profile",
+          "Invalid user ID",
       });
     }
 
-    // -----------------------------------------------------
-    // FIND ACTIVE MEMBERSHIP
-    // -----------------------------------------------------
+    // -------------------------------------------------------
+    // FIND TARGET MEMBERSHIP
+    // -------------------------------------------------------
 
-    const membership = workspace.members.find(
-      (member) =>
-        String(member.user) === String(userId) &&
-        member.status === "active"
-    );
+    const membership =
+      req.workspace.members.find(
+        (member) =>
+          String(
+            member.user
+          ) ===
+            String(userId) &&
+          member.status ===
+            "active"
+      );
 
     if (!membership) {
       return res.status(404).json({
@@ -434,22 +728,84 @@ const updateWorkspaceMember = async (req, res) => {
       });
     }
 
-    // -----------------------------------------------------
-    // FIND USER
-    // -----------------------------------------------------
+    // -------------------------------------------------------
+    // REQUESTER MEMBERSHIP
+    // -------------------------------------------------------
 
-    const user = await User.findById(userId);
+    const requesterMembership =
+      req.workspace.members.find(
+        (member) =>
+          String(
+            member.user
+          ) ===
+            String(
+              req.user._id
+            ) &&
+          member.status ===
+            "active"
+      );
+
+    if (!requesterMembership) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "You are not an active member of this workspace",
+      });
+    }
+
+    // Keep the defensive context synchronized.
+    req.workspaceMember =
+      requesterMembership;
+
+    // -------------------------------------------------------
+    // DETERMINE PERMISSION
+    // -------------------------------------------------------
+
+    const isSelf =
+      String(
+        req.user._id
+      ) ===
+      String(userId);
+
+    const isLeader =
+      requesterMembership.role ===
+      "leader";
+
+    // -------------------------------------------------------
+    // NORMAL MEMBERS CAN ONLY EDIT THEMSELVES
+    // -------------------------------------------------------
+
+    if (
+      !isSelf &&
+      !isLeader
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "You can only edit your own workspace profile",
+      });
+    }
+
+    // -------------------------------------------------------
+    // FIND USER
+    // -------------------------------------------------------
+
+    const user =
+      await User.findById(
+        userId
+      );
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message:
+          "User not found",
       });
     }
 
-    // -----------------------------------------------------
-    // CHECK WHETHER AN UPDATE WAS PROVIDED
-    // -----------------------------------------------------
+    // -------------------------------------------------------
+    // REQUIRE AT LEAST ONE UPDATE
+    // -------------------------------------------------------
 
     const hasUpdate =
       name !== undefined ||
@@ -471,216 +827,293 @@ const updateWorkspaceMember = async (req, res) => {
       });
     }
 
-    // -----------------------------------------------------
+    // -------------------------------------------------------
     // NAME
-    // -----------------------------------------------------
+    // -------------------------------------------------------
 
-    if (name !== undefined) {
+    if (
+      name !== undefined
+    ) {
       if (
-        typeof name !== "string" ||
+        typeof name !==
+          "string" ||
         !name.trim()
       ) {
         return res.status(400).json({
           success: false,
-          message: "Name cannot be empty",
+          message:
+            "Name cannot be empty",
         });
       }
 
-      user.name = name.trim();
-    }
-
-    // -----------------------------------------------------
-    // AGE
-    // -----------------------------------------------------
-
-    if (age !== undefined) {
-      const numericAge = Number(age);
+      const trimmedName =
+        name.trim();
 
       if (
-        !Number.isInteger(numericAge) ||
-        numericAge < 1 ||
-        numericAge > 120
+        trimmedName.length <
+        NAME_MIN_LENGTH
       ) {
         return res.status(400).json({
           success: false,
           message:
-            "Age must be a whole number between 1 and 120",
+            "Name must contain at least 2 characters",
         });
       }
 
-      user.age = numericAge;
-    }
-
-    // -----------------------------------------------------
-    // GENDER
-    // -----------------------------------------------------
-
-    if (gender !== undefined) {
-      if (typeof gender !== "string") {
-        return res.status(400).json({
-          success: false,
-          message: "Gender must be text",
-        });
-      }
-
-      user.gender = gender.trim();
-    }
-
-    // -----------------------------------------------------
-    // PROJECT ROLE
-    // -----------------------------------------------------
-
-    if (projectRole !== undefined) {
-      if (typeof projectRole !== "string") {
-        return res.status(400).json({
-          success: false,
-          message: "Project role must be text",
-        });
-      }
-
-      user.projectRole = projectRole.trim();
-    }
-
-    // -----------------------------------------------------
-    // CURRENT JOB
-    // -----------------------------------------------------
-
-    if (currentJob !== undefined) {
-      if (typeof currentJob !== "string") {
-        return res.status(400).json({
-          success: false,
-          message: "Current job must be text",
-        });
-      }
-
-      user.currentJob = currentJob.trim();
-    }
-
-    // -----------------------------------------------------
-    // EMAIL
-    // -----------------------------------------------------
-
-    if (email !== undefined) {
       if (
-        typeof email !== "string" ||
+        trimmedName.length >
+        NAME_MAX_LENGTH
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Name cannot exceed 100 characters",
+        });
+      }
+
+      user.name =
+        trimmedName;
+    }
+
+    // -------------------------------------------------------
+    // AGE
+    // -------------------------------------------------------
+    //
+    // null / empty string clears the optional age field.
+    //
+    // =======================================================
+
+    if (
+      age !== undefined
+    ) {
+      if (
+        age === null ||
+        age === ""
+      ) {
+        user.age = undefined;
+      } else {
+        const numericAge =
+          Number(age);
+
+        if (
+          !Number.isInteger(
+            numericAge
+          ) ||
+          numericAge < 13 ||
+          numericAge > 120
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Age must be a whole number between 13 and 120",
+          });
+        }
+
+        user.age =
+          numericAge;
+      }
+    }
+
+    // -------------------------------------------------------
+    // STRING PROFILE FIELDS
+    // -------------------------------------------------------
+
+    const stringFields = [
+      ["gender", gender],
+      ["projectRole", projectRole],
+      ["currentJob", currentJob],
+      ["bio", bio],
+      ["phone", phone],
+      ["location", location],
+      ["timeZone", timeZone],
+    ];
+
+    for (
+      const [
+        fieldName,
+        fieldValue,
+      ] of stringFields
+    ) {
+      if (
+        fieldValue !==
+        undefined
+      ) {
+        if (
+          typeof fieldValue !==
+          "string"
+        ) {
+          return res
+            .status(400)
+            .json({
+              success: false,
+              message:
+                `${fieldName} must be text`,
+            });
+        }
+
+        const trimmedValue =
+          fieldValue.trim();
+
+        // -----------------------------------------------------
+        // BIO MAXIMUM LENGTH
+        // -----------------------------------------------------
+
+        if (
+          fieldName === "bio" &&
+          trimmedValue.length >
+            BIO_MAX_LENGTH
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Bio cannot exceed 500 characters",
+          });
+        }
+
+        user[fieldName] =
+          trimmedValue;
+      }
+    }
+
+    // -------------------------------------------------------
+    // EMAIL
+    // -------------------------------------------------------
+
+    if (
+      email !== undefined
+    ) {
+      if (
+        typeof email !==
+          "string" ||
         !email.trim()
       ) {
         return res.status(400).json({
           success: false,
-          message: "Email cannot be empty",
+          message:
+            "Email cannot be empty",
         });
       }
 
-      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedEmail =
+        email.trim().toLowerCase();
 
-      const existingUser = await User.findOne({
-        email: normalizedEmail,
-        _id: {
-          $ne: user._id,
-        },
-      });
-
-      if (existingUser) {
-        return res.status(409).json({
+      if (
+        !EMAIL_REGEX.test(
+          normalizedEmail
+        )
+      ) {
+        return res.status(400).json({
           success: false,
           message:
-            "Another account already uses this email",
+            "Please enter a valid email address",
         });
       }
 
-      user.email = normalizedEmail;
-    }
+      // -----------------------------------------------------
+      // EMAIL HAS NOT CHANGED
+      // -----------------------------------------------------
 
-    // -----------------------------------------------------
-    // BIO
-    // -----------------------------------------------------
+      if (
+        normalizedEmail ===
+        user.email
+      ) {
+        // No action required.
+      } else {
+        // ---------------------------------------------------
+        // ONLY THE ACCOUNT OWNER CAN CHANGE EMAIL
+        // ---------------------------------------------------
 
-    if (bio !== undefined) {
-      if (typeof bio !== "string") {
-        return res.status(400).json({
-          success: false,
-          message: "Bio must be text",
-        });
+        if (!isSelf) {
+          return res.status(403).json({
+            success: false,
+            message:
+              "You cannot change another member's account email",
+          });
+        }
+
+        // ---------------------------------------------------
+        // REQUIRE CURRENT PASSWORD
+        // ---------------------------------------------------
+
+        if (
+          typeof currentPassword !==
+            "string" ||
+          !currentPassword
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Current password is required to change your email",
+          });
+        }
+
+        // ---------------------------------------------------
+        // VERIFY PASSWORD
+        // ---------------------------------------------------
+
+        const passwordMatches =
+          await bcrypt.compare(
+            currentPassword,
+            user.password
+          );
+
+        if (
+          !passwordMatches
+        ) {
+          return res.status(401).json({
+            success: false,
+            message:
+              "Current password is incorrect",
+          });
+        }
+
+        // ---------------------------------------------------
+        // CHECK EMAIL AVAILABILITY
+        // ---------------------------------------------------
+
+        const existingUser =
+          await User.findOne({
+            email:
+              normalizedEmail,
+            _id: {
+              $ne:
+                user._id,
+            },
+          });
+
+        if (existingUser) {
+          return res.status(409).json({
+            success: false,
+            message:
+              "Another account already uses this email",
+          });
+        }
+
+        user.email =
+          normalizedEmail;
       }
-
-      user.bio = bio.trim();
     }
 
-    // -----------------------------------------------------
-    // PHONE
-    // -----------------------------------------------------
-
-    if (phone !== undefined) {
-      if (typeof phone !== "string") {
-        return res.status(400).json({
-          success: false,
-          message: "Phone must be text",
-        });
-      }
-
-      user.phone = phone.trim();
-    }
-
-    // -----------------------------------------------------
-    // LOCATION
-    // -----------------------------------------------------
-
-    if (location !== undefined) {
-      if (typeof location !== "string") {
-        return res.status(400).json({
-          success: false,
-          message: "Location must be text",
-        });
-      }
-
-      user.location = location.trim();
-    }
-
-    // -----------------------------------------------------
-    // TIME ZONE
-    // -----------------------------------------------------
-
-    if (timeZone !== undefined) {
-      if (typeof timeZone !== "string") {
-        return res.status(400).json({
-          success: false,
-          message: "Time zone must be text",
-        });
-      }
-
-      user.timeZone = timeZone.trim();
-    }
-
-    // -----------------------------------------------------
+    // -------------------------------------------------------
     // SAVE USER
-    // -----------------------------------------------------
+    // -------------------------------------------------------
 
     await user.save();
 
-    // -----------------------------------------------------
+    // -------------------------------------------------------
     // RESPONSE
-    // -----------------------------------------------------
+    // -------------------------------------------------------
 
     return res.status(200).json({
       success: true,
       message:
         "Workspace member updated successfully",
-      member: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        age: user.age,
-        gender: user.gender,
-        projectRole: user.projectRole,
-        currentJob: user.currentJob,
-        phone: user.phone,
-        location: user.location,
-        timeZone: user.timeZone,
-        bio: user.bio,
-        role: membership.role,
-        status: membership.status,
-        workspaceId: workspace._id,
-      },
+      member:
+        buildSafeMember(
+          user,
+          membership,
+          workspaceId
+        ),
     });
   } catch (error) {
     console.error(
@@ -688,11 +1121,13 @@ const updateWorkspaceMember = async (req, res) => {
       error
     );
 
-    // -----------------------------------------------------
+    // -------------------------------------------------------
     // DUPLICATE EMAIL
-    // -----------------------------------------------------
+    // -------------------------------------------------------
 
-    if (error.code === 11000) {
+    if (
+      error.code === 11000
+    ) {
       return res.status(409).json({
         success: false,
         message:
@@ -700,18 +1135,20 @@ const updateWorkspaceMember = async (req, res) => {
       });
     }
 
-    // -----------------------------------------------------
-    // MONGOOSE VALIDATION ERROR
-    // -----------------------------------------------------
+    // -------------------------------------------------------
+    // VALIDATION ERROR
+    // -------------------------------------------------------
 
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map(
-        (item) => item.message
-      );
-
+    if (
+      error.name ===
+      "ValidationError"
+    ) {
       return res.status(400).json({
         success: false,
-        message: messages.join(", "),
+        message:
+          getValidationMessages(
+            error
+          ).join(", "),
       });
     }
 
@@ -729,132 +1166,168 @@ const updateWorkspaceMember = async (req, res) => {
 //
 // TEAM LEADER ONLY
 //
-// The User account is NOT deleted.
+// This removes the user's membership from the workspace.
+// It does NOT delete the User account.
 //
-// Instead:
-//     membership.status = "inactive"
-//
-// The user can later be added back to the workspace.
-//
-// Team Leader cannot remove themselves.
+// The Team Leader cannot remove themselves.
 //
 // =========================================================
 
-const deleteWorkspaceMember = async (req, res) => {
-  try {
-    const { workspaceId, userId } = req.params;
+const deleteWorkspaceMember =
+  async (req, res) => {
+    try {
+      const {
+        workspaceId,
+        userId,
+      } = req.params;
 
-    // -----------------------------------------------------
-    // VALIDATE WORKSPACE ID
-    // -----------------------------------------------------
+      // -----------------------------------------------------
+      // VALIDATE CONTEXT
+      // -----------------------------------------------------
 
-    if (!mongoose.isValidObjectId(workspaceId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid workspace ID",
+      if (
+        !validateWorkspaceContext(
+          req,
+          res
+        )
+      ) {
+        return;
+      }
+
+      // -----------------------------------------------------
+      // DELETE MEMBER MUST BE LEADER
+      // -----------------------------------------------------
+
+      if (
+        !requireLeaderPermission(
+          req,
+          res
+        )
+      ) {
+        return;
+      }
+
+      // -----------------------------------------------------
+      // VALIDATE USER ID
+      // -----------------------------------------------------
+
+      if (
+        !mongoose.isValidObjectId(
+          userId
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid user ID",
+        });
+      }
+
+      // -----------------------------------------------------
+      // PREVENT SELF REMOVAL
+      // -----------------------------------------------------
+
+      if (
+        String(
+          req.user._id
+        ) ===
+        String(userId)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "The Team Leader cannot remove themselves from the workspace",
+        });
+      }
+
+      // -----------------------------------------------------
+      // FIND TARGET MEMBERSHIP
+      // -----------------------------------------------------
+
+      const membership =
+        req.workspace.members.find(
+          (member) =>
+            String(
+              member.user
+            ) ===
+              String(userId) &&
+            member.status ===
+              "active"
+        );
+
+      if (!membership) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Active member not found in this workspace",
+        });
+      }
+
+      // -----------------------------------------------------
+      // PROTECT ACTIVE LEADER
+      // -----------------------------------------------------
+      //
+      // Leadership transfer is not implemented.
+      //
+      // -----------------------------------------------------
+
+      if (
+        membership.role ===
+        "leader"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "The active Team Leader cannot be removed from the workspace",
+        });
+      }
+
+      // -----------------------------------------------------
+      // DEACTIVATE MEMBERSHIP
+      // -----------------------------------------------------
+
+      membership.status =
+        "inactive";
+
+      await req.workspace.save();
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "Workspace member removed successfully",
+        userId,
+        workspaceId,
       });
-    }
+    } catch (error) {
+      console.error(
+        "Delete workspace member error:",
+        error
+      );
 
-    // -----------------------------------------------------
-    // VALIDATE USER ID
-    // -----------------------------------------------------
+      // -----------------------------------------------------
+      // VALIDATION ERROR
+      // -----------------------------------------------------
 
-    if (!mongoose.isValidObjectId(userId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid user ID",
-      });
-    }
+      if (
+        error.name ===
+        "ValidationError"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            getValidationMessages(
+              error
+            ).join(", "),
+        });
+      }
 
-    // -----------------------------------------------------
-    // FIND WORKSPACE
-    // -----------------------------------------------------
-
-    const workspace = await Workspace.findById(workspaceId);
-
-    if (!workspace) {
-      return res.status(404).json({
-        success: false,
-        message: "Workspace not found",
-      });
-    }
-
-    // -----------------------------------------------------
-    // CHECK WORKSPACE STATUS
-    // -----------------------------------------------------
-
-    if (workspace.status !== "active") {
-      return res.status(403).json({
-        success: false,
-        message: "This workspace is inactive",
-      });
-    }
-
-    // -----------------------------------------------------
-    // TEAM LEADER CANNOT REMOVE THEMSELVES
-    // -----------------------------------------------------
-
-    if (
-      String(req.user._id) ===
-      String(userId)
-    ) {
-      return res.status(400).json({
+      return res.status(500).json({
         success: false,
         message:
-          "The Team Leader cannot remove themselves from the workspace",
+          "Server error while removing workspace member",
       });
     }
-
-    // -----------------------------------------------------
-    // FIND ACTIVE MEMBER
-    // -----------------------------------------------------
-
-    const membership = workspace.members.find(
-      (member) =>
-        String(member.user) === String(userId) &&
-        member.status === "active"
-    );
-
-    if (!membership) {
-      return res.status(404).json({
-        success: false,
-        message:
-          "Active member not found in this workspace",
-      });
-    }
-
-    // -----------------------------------------------------
-    // REMOVE MEMBER FROM WORKSPACE
-    // -----------------------------------------------------
-
-    membership.status = "inactive";
-
-    await workspace.save();
-
-    // -----------------------------------------------------
-    // RESPONSE
-    // -----------------------------------------------------
-
-    return res.status(200).json({
-      success: true,
-      message:
-        "Workspace member removed successfully",
-      userId,
-      workspaceId,
-    });
-  } catch (error) {
-    console.error(
-      "Delete workspace member error:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        "Server error while removing workspace member",
-    });
-  }
-};
+  };
 
 // =========================================================
 // EXPORTS
