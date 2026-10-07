@@ -46,8 +46,6 @@ const taskSchema = new mongoose.Schema(
     // STATUS
     // =====================================================
     //
-    // Matches the CollabBoard board:
-    //
     // todo   → To Do
     // doing  → In Progress
     // review → In Review
@@ -77,18 +75,32 @@ const taskSchema = new mongoose.Schema(
     // MULTIPLE ASSIGNEES
     // =====================================================
     //
-    // A single task can belong to multiple team members.
+    // A task can be assigned to multiple active members
+    // of the same workspace.
     //
-    // We store User ObjectIds rather than names.
+    // The controller validates that every assignee belongs
+    // to the workspace and is active.
     //
     // =====================================================
 
-    assigneeIds: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+    assigneeIds: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+      ],
+      default: [],
+      validate: {
+        validator: function (assigneeIds) {
+          const ids = assigneeIds.map((id) => String(id));
+
+          return ids.length === new Set(ids).size;
+        },
+        message:
+          "A task cannot contain duplicate assignees",
       },
-    ],
+    },
 
     // =====================================================
     // DEADLINE
@@ -113,9 +125,10 @@ const taskSchema = new mongoose.Schema(
     // COMPLETION DATE
     // =====================================================
     //
-    // This remains null until the task is completed.
+    // Null while the task is not completed.
     //
-    // It will be set by the controller when status becomes
+    // The task controller sets this when status becomes
+    // "done" and resets it when the task moves away from
     // "done".
     //
     // =====================================================
@@ -134,7 +147,7 @@ const taskSchema = new mongoose.Schema(
 // INDEXES
 // =========================================================
 //
-// These help task queries for a workspace.
+// These indexes support common workspace task queries.
 //
 // =========================================================
 

@@ -17,7 +17,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
     credentials: true,
   })
 );
@@ -29,7 +29,7 @@ app.use(express.json());
 // =========================================================
 
 app.get("/", (req, res) => {
-  res.json({
+  return res.status(200).json({
     success: true,
     message: "CollabBoard API is running",
   });
@@ -60,19 +60,32 @@ app.use("/api/workspaces", memberRoutes);
 app.use("/api/tasks", taskRoutes);
 
 // =========================================================
-// DATABASE + SERVER
+// SERVER CONFIGURATION
 // =========================================================
 
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
+
+// =========================================================
+// START DATABASE + SERVER
+// =========================================================
 
 const startServer = async () => {
-  await connectDB();
+  try {
+    await connectDB();
 
-  app.listen(PORT, () => {
-    console.log(
-      `CollabBoard server running on port ${PORT}`
+    app.listen(PORT, () => {
+      console.log(
+        `CollabBoard server running on port ${PORT}`
+      );
+    });
+  } catch (error) {
+    console.error(
+      "Failed to start CollabBoard server:",
+      error.message
     );
-  });
+
+    process.exit(1);
+  }
 };
 
 startServer();
