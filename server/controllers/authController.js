@@ -83,6 +83,122 @@ const createAuthToken = (userId) => {
 };
 
 // =========================================================
+// HELPER - LINK NON-ACTIVE WORKSPACE MEMBERSHIPS
+// =========================================================
+//
+// When a Team Leader adds someone who does not have a
+// CollabBoard account, the workspace stores:
+//
+//   user = null
+//   accountStatus = "non-active"
+//   email = person's email
+//
+// When that person later registers using the same email,
+// this helper finds those existing memberships and links
+// them to the newly created User account.
+//
+// The existing membership status is preserved.
+// Therefore:
+//
+//   active membership   -> remains active
+//   inactive membership -> remains inactive
+//
+// accountStatus changes to "active" because the person now
+// has a registered CollabBoard account.
+//
+// =========================================================
+
+const linkPendingWorkspaceMemberships = async (user) => {
+  const normalizedEmail = normalizeEmail(user.email);
+
+  if (!normalizedEmail) {
+    return 0;
+  }
+
+  // -------------------------------------------------------
+  // FIND WORKSPACES WITH A NON-ACTIVE MEMBER USING THIS EMAIL
+  // -------------------------------------------------------
+
+  const workspaces = await Workspace.find({
+    members: {
+      $elemMatch: {
+        email: normalizedEmail,
+        user: null,
+      },
+    },
+  });
+
+  if (!workspaces.length) {
+    return 0;
+  }
+
+  let linkedMembershipCount = 0;
+
+  // -------------------------------------------------------
+  // LINK EACH MATCHING MEMBERSHIP
+  // -------------------------------------------------------
+
+  for (const workspace of workspaces) {
+    let workspaceChanged = false;
+
+    for (const member of workspace.members) {
+      const memberEmail = normalizeEmail(member.email);
+
+      if (
+        member.user == null &&
+        memberEmail === normalizedEmail
+      ) {
+        // -----------------------------------------------
+        // LINK USER ACCOUNT
+        // -----------------------------------------------
+
+        member.user = user._id;
+
+        // -----------------------------------------------
+        // CHANGE ACCOUNT STATUS
+        // -----------------------------------------------
+
+        member.accountStatus = "active";
+
+        // -----------------------------------------------
+        // SYNC PROFILE INFORMATION
+        //
+        // The registered User account becomes the source
+        // of truth for the person's personal profile.
+        // -----------------------------------------------
+
+        member.email = user.email || "";
+        member.name = user.name || "";
+        member.age =
+          typeof user.age === "number"
+            ? user.age
+            : null;
+        member.gender = user.gender || "";
+        member.projectRole = user.projectRole || "";
+        member.currentJob = user.currentJob || "";
+        member.phone = user.phone || "";
+        member.location = user.location || "";
+        member.timeZone = user.timeZone || "";
+        member.bio = user.bio || "";
+
+        workspaceChanged = true;
+        linkedMembershipCount += 1;
+      }
+    }
+
+    // -----------------------------------------------------
+    // SAVE WORKSPACE
+    // -----------------------------------------------------
+
+    if (workspaceChanged) {
+      await workspace.save();
+    }
+  }
+
+  return linkedMembershipCount;
+};
+
+// =========================================================
 // REGISTER USER
 // =========================================================
 
@@ -231,6 +347,40 @@ const registerUser = async (req, res) => {
       timeZone,
       bio,
     });
+
+    // -------------------------------------------------------
+    // LINK EXISTING NON-ACTIVE MEMBERSHIPS
+    // -------------------------------------------------------
+    //
+    // This is the important part for the new workspace
+    // Active / Non-Active member functionality.
+    //
+    // Example:
+    //
+    // Team Leader adds:
+    //     john@gmail.com
+    //
+    // John registers:
+    //     john@gmail.com
+    //
+    // The existing workspace membership is automatically
+    // connected to John's new User account.
+    //
+    // -------------------------------------------------------
+
+    try {
+      await linkPendingWorkspaceMemberships(user);
+    } catch (membershipLinkError) {
+      // Registration has already created the account.
+      // Do not fail registration because workspace linking
+      // encountered an unexpected database error.
+      //
+      // The error is logged so it can be diagnosed.
+      console.error(
+        "Workspace membership linking error:",
+        membershipLinkError
+      );
+    }
 
     // -------------------------------------------------------
     // SUCCESS RESPONSE
@@ -427,6 +577,7 @@ const loginUser = async (req, res) => {
 // =========================================================
 //
 // authMiddleware has already:
+//
 // 1. Verified JWT
 // 2. Found the user
 // 3. Removed password
