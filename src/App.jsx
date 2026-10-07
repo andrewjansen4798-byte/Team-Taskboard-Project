@@ -26,163 +26,6 @@ import Home from "./components/Home";
 
 import SettingsPage from "./components/Settings";
 
-// =========================================================
-// INITIAL TEAM MEMBERS
-// =========================================================
-//
-// App.jsx is the single source of truth for all team members.
-//
-// These members are shared with:
-// - Team
-// - Profile
-// - Board
-// - Add Task
-// - Edit Task
-// - Dashboard
-// - Reports
-// - Assignee Filters
-//
-// =========================================================
-
-const INITIAL_TEAM_MEMBERS = [
-  {
-    id: 1,
-    name: "Andrew Terence",
-    email: "andrew@collabboard.com",
-    age: "21",
-    gender: "Male",
-    projectRole: "Data Analyst",
-    currentJob: "Undergraduate",
-    bio: "Working on data analysis and machine learning.",
-    role: "Team Leader",
-    status: "Active",
-    joined: "May 20, 2026",
-    isCurrentUser: true,
-  },
-
-  {
-    id: 2,
-    name: "John Silva",
-    email: "john@collabboard.com",
-    age: "22",
-    gender: "Male",
-    projectRole: "ML Developer",
-    currentJob: "Software Engineering Intern",
-    bio: "Interested in machine learning and backend development.",
-    role: "Member",
-    status: "Active",
-    joined: "May 21, 2026",
-    isCurrentUser: false,
-  },
-
-  {
-    id: 3,
-    name: "Sarah Perera",
-    email: "sarah@collabboard.com",
-    age: "21",
-    gender: "Female",
-    projectRole: "UI/UX Designer",
-    currentJob: "Undergraduate",
-    bio: "Designing the user experience for the project.",
-    role: "Member",
-    status: "Active",
-    joined: "May 21, 2026",
-    isCurrentUser: false,
-  },
-
-  {
-    id: 4,
-    name: "Mike Fernando",
-    email: "mike@collabboard.com",
-    age: "23",
-    gender: "Male",
-    projectRole: "Backend Developer",
-    currentJob: "Junior Developer",
-    bio: "Working on APIs and backend functionality.",
-    role: "Member",
-    status: "Active",
-    joined: "May 22, 2026",
-    isCurrentUser: false,
-  },
-
-  {
-    id: 5,
-    name: "Sandewni Perera",
-    email: "sandewni@collabboard.com",
-    age: "21",
-    gender: "Female",
-    projectRole: "Data Scientist",
-    currentJob: "Undergraduate",
-    bio: "Working with data science and predictive models.",
-    role: "Member",
-    status: "Active",
-    joined: "May 22, 2026",
-    isCurrentUser: false,
-  },
-];
-
-// =========================================================
-// INITIAL EXISTING TASKS
-// =========================================================
-//
-// Task assignees use the exact same names as the centralized
-// team member list.
-//
-// =========================================================
-
-const INITIAL_EXISTING_TASKS = [
-  {
-    id: 1,
-    title: "Fix Login",
-    description: "Complete the login page",
-    assignees: ["Andrew Terence"],
-    priority: "High",
-    dueDate: "",
-    status: "todo",
-  },
-
-  {
-    id: 2,
-    title: "Create Navbar",
-    description: "Build the navigation bar",
-    assignees: ["John Silva"],
-    priority: "Medium",
-    dueDate: "",
-    status: "todo",
-  },
-
-  {
-    id: 3,
-    title: "Test API",
-    description: "Test the backend API",
-    assignees: ["Sandewni Perera"],
-    priority: "High",
-    dueDate: "",
-    status: "doing",
-  },
-
-  {
-    id: 4,
-    title: "Review Dashboard",
-    description:
-      "Review the dashboard before final approval",
-    assignees: ["Andrew Terence"],
-    priority: "Medium",
-    dueDate: "",
-    status: "review",
-  },
-
-  {
-    id: 5,
-    title: "Create Homepage",
-    description: "Build the homepage design",
-    assignees: ["Sarah Perera"],
-    priority: "Low",
-    dueDate: "",
-    status: "done",
-  },
-];
-
 function App() {
   // =========================================================
   // PAGE STATE
@@ -229,6 +72,25 @@ function App() {
           )
       )
     );
+
+  // =========================================================
+  // WORKSPACE LOAD STATE
+  // =========================================================
+
+  const [workspaceLoading, setWorkspaceLoading] =
+    useState(() =>
+      Boolean(
+        localStorage.getItem("collabboardToken") &&
+          localStorage.getItem("collabboardUser")
+      )
+    );
+
+  const [workspaceLoadError, setWorkspaceLoadError] =
+    useState(null);
+
+  // Workspace role is workspace-specific.
+  const [currentWorkspaceRole, setCurrentWorkspaceRole] =
+    useState(null);
 
   // =========================================================
   // WORKSPACE PAGE
@@ -296,56 +158,29 @@ function App() {
   // =========================================================
 
   const [teamMembers, setTeamMembers] =
-    useState(() =>
-      buildTeamMembersForCurrentUser(
-        authUser
-      )
+    useState([]);
+
+  // =========================================================
+  // TASK-ASSIGNABLE MEMBERS
+  // =========================================================
+  //
+  // Only registered Active workspace members can be assigned
+  // to tasks. Non-Active members are still kept in
+  // teamMembers so they can appear on the Team page.
+  //
+  // =========================================================
+
+  const taskAssignableMembers =
+    teamMembers.filter(
+      (member) =>
+        member.accountStatus === "Active" &&
+        member.membershipStatus === "Active" &&
+        Boolean(member.userId)
     );
 
   // =========================================================
   // CURRENT USER
   // =========================================================
-  //
-  // The logged-in user always comes from the backend login
-  // response/localStorage. The old hard-coded
-  // `isCurrentUser` flag is no longer used to decide who is
-  // logged in.
-  //
-  // The static team list is still kept temporarily for the
-  // existing frontend UI until the Team/Workspace data is
-  // fully connected to the backend.
-  // =========================================================
-
-  function buildTeamMembersForCurrentUser(
-    user
-  ) {
-    // -------------------------------------------------------
-    // IMPORTANT WORKSPACE RULE
-    // -------------------------------------------------------
-    //
-    // A newly created workspace must contain ONLY its creator
-    // at this stage. The creator becomes the single Team Leader.
-    // Other members are added only through the workspace member
-    // management flow.
-    //
-    // Do not copy the old static mock team list here.
-    // -------------------------------------------------------
-
-    if (!user) {
-      return [];
-    }
-
-    return [
-      {
-        ...user,
-        id: user.id || user._id,
-        role: "Member",
-        status: "Active",
-        joined: "",
-        isCurrentUser: true,
-      },
-    ];
-  }
 
   const currentUser = (() => {
     if (!authUser) {
@@ -395,11 +230,19 @@ function App() {
       };
     }
 
+    const workspaceRole =
+      currentWorkspaceRole || null;
+
     return {
       ...authUser,
       id:
         authUser.id ||
         authUser._id,
+      role:
+        workspaceRole === "leader"
+          ? "Team Leader"
+          : "Member",
+      workspaceRole,
       isCurrentUser: true,
     };
   })();
@@ -427,65 +270,253 @@ function App() {
       .toLowerCase();
 
     return backendMembers
-      .filter(
-        (membership) =>
-          membership &&
-          membership.status === "active" &&
-          membership.user
-      )
+      .filter(Boolean)
       .map((membership) => {
-        const user = membership.user;
-        const memberId = String(
-          user._id ||
-            user.id ||
+        // Registered members may arrive as:
+        //   { user: {...populated user}, ...membershipFields }
+        //   { user: "userIdString", ...membershipFields }
+        // or as a flattened safe-member object with userId.
+        // Non-Active members have no registered User document,
+        // so their user/userId can legitimately be null.
+
+        const rawAccountStatus = String(
+          membership?.accountStatus ||
+            membership?.memberStatus ||
             ""
-        );
+        )
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, "-");
+
+        const hasExplicitActiveAccount =
+          rawAccountStatus === "active";
+
+        const hasExplicitNonActiveAccount =
+          rawAccountStatus === "non-active" ||
+          rawAccountStatus === "nonactive";
+
+        const rawUser = membership?.user;
+
+        const rawUserIsObject =
+          Boolean(rawUser) &&
+          typeof rawUser === "object";
+
+        // Populated user document (if any) used only for
+        // profile fields.
+        const user = rawUserIsObject
+          ? rawUser
+          : null;
+
+        const membershipId =
+          membership?._id ||
+          membership?.membershipId ||
+          membership?.id ||
+          null;
+
+        // FIXED: the registered User ID must NEVER fall back to
+        // the membership subdocument _id. Task assignees must
+        // always receive the real User ID.
+        let userId =
+          membership?.userId ||
+          (rawUserIsObject
+            ? rawUser._id || rawUser.id
+            : null) ||
+          (typeof rawUser === "string" &&
+          rawUser
+            ? rawUser
+            : null) ||
+          null;
+
+        if (
+          userId &&
+          typeof userId === "object"
+        ) {
+          userId =
+            userId._id ||
+            userId.id ||
+            null;
+        }
+
+        if (
+          hasExplicitActiveAccount &&
+          !userId
+        ) {
+          console.warn(
+            "Active member has no resolvable user ID:",
+            membership
+          );
+        }
+
+        const memberId =
+          userId ||
+          membershipId ||
+          null;
+
+        if (!memberId) {
+          return null;
+        }
 
         const memberEmail = String(
-          user.email ||
+          user?.email ||
+            membership?.email ||
             ""
         )
           .trim()
           .toLowerCase();
 
+        const rawRole =
+          membership?.role ||
+          membership?.workspaceRole ||
+          null;
+
+        // IMPORTANT:
+        // Backend normally gives "leader".
+        // Some frontend/user objects may contain
+        // "Team Leader", so both are accepted.
+        const normalizedRole =
+          ["leader", "team leader"].includes(
+            String(rawRole || "")
+              .trim()
+              .toLowerCase()
+              .replace(/\s+/g, " ")
+          )
+            ? "leader"
+            : "member";
+
         const isCurrentUser =
-          (authUserId &&
-            memberId === authUserId) ||
-          (authUserEmail &&
-            memberEmail === authUserEmail);
+          Boolean(
+            (authUserId &&
+              userId &&
+              String(userId) ===
+                authUserId) ||
+            (authUserEmail &&
+              memberEmail &&
+              memberEmail === authUserEmail)
+          );
+
+        // accountStatus is the authoritative frontend label for
+        // whether this workspace member has a CollabBoard account.
+        const accountStatus =
+          hasExplicitActiveAccount ||
+          (!hasExplicitNonActiveAccount &&
+            Boolean(userId))
+            ? "Active"
+            : "Non-Active";
+
+        const membershipStatus =
+          String(
+            membership?.status ||
+              "active"
+          )
+            .trim()
+            .toLowerCase();
 
         return {
-          id: memberId,
-          _id: memberId,
-          name: user.name || "",
-          email: user.email || "",
-          age: user.age ?? "",
-          gender: user.gender || "",
-          projectRole: user.projectRole || "",
-          currentJob: user.currentJob || "",
-          phone: user.phone || "",
-          location: user.location || "",
-          timeZone: user.timeZone || "",
-          bio: user.bio || "",
+          id: String(memberId),
+          _id: String(memberId),
+
+          membershipId:
+            membershipId
+              ? String(membershipId)
+              : null,
+
+          userId:
+            userId
+              ? String(userId)
+              : null,
+
+          name:
+            user?.name ||
+            membership?.name ||
+            "",
+
+          email:
+            user?.email ||
+            membership?.email ||
+            "",
+
+          age:
+            user?.age ??
+            membership?.age ??
+            "",
+
+          gender:
+            user?.gender ||
+            membership?.gender ||
+            "",
+
+          projectRole:
+            user?.projectRole ||
+            membership?.projectRole ||
+            "",
+
+          currentJob:
+            user?.currentJob ||
+            membership?.currentJob ||
+            "",
+
+          phone:
+            user?.phone ||
+            membership?.phone ||
+            "",
+
+          location:
+            user?.location ||
+            membership?.location ||
+            "",
+
+          timeZone:
+            user?.timeZone ||
+            membership?.timeZone ||
+            "",
+
+          bio:
+            user?.bio ||
+            membership?.bio ||
+            "",
+
           role:
-            membership.role === "leader"
+            normalizedRole === "leader"
               ? "Team Leader"
               : "Member",
-          workspaceRole: membership.role,
-          status: "Active",
-          joined: membership.joinedAt
-            ? new Date(
-                membership.joinedAt
-              ).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
-            : "",
-          joinedAt: membership.joinedAt || null,
-          isCurrentUser: Boolean(isCurrentUser),
+
+          workspaceRole:
+            normalizedRole,
+
+          status:
+            accountStatus,
+
+          accountStatus,
+
+          membershipStatus:
+            membershipStatus === "inactive"
+              ? "Inactive"
+              : "Active",
+
+          joined:
+            membership?.joinedAt
+              ? new Date(
+                  membership.joinedAt
+                ).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : "",
+
+          joinedAt:
+            membership?.joinedAt ||
+            null,
+
+          workspaceId:
+            membership?.workspaceId ||
+            null,
+
+          isCurrentUser:
+            isCurrentUser,
         };
-      });
+      })
+      .filter(Boolean);
   }
 
   // =========================================================
@@ -496,7 +527,9 @@ function App() {
     targetWorkspaceId
   ) {
     if (!targetWorkspaceId) {
-      return [];
+      throw new Error(
+        "Workspace ID is required to load members."
+      );
     }
 
     const token =
@@ -505,101 +538,119 @@ function App() {
       );
 
     if (!token) {
-      return [];
+      throw new Error(
+        "Your login session has expired. Please log in again."
+      );
     }
+
+    const response = await fetch(
+      `http://localhost:5000/api/workspaces/${targetWorkspaceId}/members`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    let data;
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/workspaces/${targetWorkspaceId}/members`,
-        {
-          method: "GET",
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-          },
-        }
-      );
-
-      let data;
-
-      try {
-        data = await response.json();
-      } catch (error) {
-        throw new Error(
-          "The server returned an invalid members response."
-        );
-      }
-
-      if (!response.ok || !data.success) {
-        throw new Error(
-          data.message ||
-            "Unable to load workspace members."
-        );
-      }
-
-      const mappedMembers =
-        mapWorkspaceMembers(
-          data.members
-        );
-
-      setTeamMembers(
-        mappedMembers
-      );
-
-      if (data.workspace?.name) {
-        setWorkspaceName(
-          data.workspace.name
-        );
-
-        localStorage.setItem(
-          "collabboardWorkspaceName",
-          data.workspace.name
-        );
-      }
-
-      if (
-        data.workspace?.description !==
-        undefined
-      ) {
-        const workspaceDescription =
-          data.workspace.description ||
-          "";
-
-        setWorkspaceDescription(
-          workspaceDescription
-        );
-
-        localStorage.setItem(
-          "collabboardWorkspaceDescription",
-          workspaceDescription
-        );
-      }
-
-      return mappedMembers;
+      data = await response.json();
     } catch (error) {
-      console.error(
-        "Load workspace members error:",
-        error
+      throw new Error(
+        "The server returned an invalid members response."
+      );
+    }
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data.message ||
+          "Unable to load workspace members."
+      );
+    }
+
+    const mappedMembers =
+      mapWorkspaceMembers(
+        data.members
       );
 
-      return [];
+    if (mappedMembers.length === 0) {
+      throw new Error(
+        "The workspace member response did not contain any valid members."
+      );
     }
+
+    const currentMember =
+      mappedMembers.find(
+        (member) =>
+          member.isCurrentUser
+      );
+
+    if (currentMember?.workspaceRole) {
+      setCurrentWorkspaceRole(
+        currentMember.workspaceRole
+      );
+    }
+
+    setTeamMembers(
+      mappedMembers
+    );
+
+    if (data.workspace?.name) {
+      setWorkspaceName(
+        data.workspace.name
+      );
+
+      localStorage.setItem(
+        "collabboardWorkspaceName",
+        data.workspace.name
+      );
+    }
+
+    if (
+      data.workspace?.description !==
+      undefined
+    ) {
+      const workspaceDescription =
+        data.workspace.description ||
+        "";
+
+      setWorkspaceDescription(
+        workspaceDescription
+      );
+
+      localStorage.setItem(
+        "collabboardWorkspaceDescription",
+        workspaceDescription
+      );
+    }
+
+    return mappedMembers;
   }
 
   // =========================================================
-  // RESTORE AN EXISTING WORKSPACE AFTER LOGIN
+  // LOAD COMPLETE WORKSPACE DATA
   // =========================================================
-  //
-  // The workspace belongs to the logged-in user, not to the
-  // login account globally. The backend tells us which active
-  // workspaces belong to the current user and what role the user
-  // has in each workspace.
-  //
-  // Priority:
-  // 1. Previously selected workspace, if it still belongs to user
-  // 2. Most recently returned active workspace
-  // 3. Workspace setup screen when the user has no workspaces
-  //
+
+  async function loadWorkspaceData(
+    targetWorkspaceId
+  ) {
+    const members =
+      await loadWorkspaceMembers(
+        String(targetWorkspaceId)
+      );
+
+    await loadWorkspaceTasks(
+      String(targetWorkspaceId),
+      members
+    );
+
+    return members;
+  }
+
+  // =========================================================
+  // RESTORE EXISTING WORKSPACE AFTER LOGIN
   // =========================================================
 
   async function restoreExistingWorkspaceAfterLogin() {
@@ -608,9 +659,13 @@ function App() {
         "collabboardToken"
       );
 
-    if (!token) {
+    if (!token || !authUser) {
+      setWorkspaceLoading(false);
       return false;
     }
+
+    setWorkspaceLoading(true);
+    setWorkspaceLoadError(null);
 
     try {
       const response = await fetch(
@@ -618,8 +673,7 @@ function App() {
         {
           method: "GET",
           headers: {
-            Authorization:
-              `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -646,30 +700,23 @@ function App() {
           ? data.workspaces
           : [];
 
-      // -----------------------------------------------------
-      // NO ACTIVE WORKSPACE
-      // -----------------------------------------------------
-
       if (workspaces.length === 0) {
         setWorkspaceId("");
-        setTeamMembers(
-          buildTeamMembersForCurrentUser(
-            authUser
-          )
-        );
+        setCurrentWorkspaceRole(null);
+        setTeamMembers([]);
+        setTasks([]);
+        setWorkspaceName("CollabBoard");
+        setWorkspaceDescription("");
 
         localStorage.removeItem(
           "collabboardWorkspaceId"
         );
-
         localStorage.removeItem(
           "collabboardWorkspaceCode"
         );
-
         localStorage.removeItem(
           "collabboardWorkspaceName"
         );
-
         localStorage.removeItem(
           "collabboardWorkspaceDescription"
         );
@@ -677,13 +724,10 @@ function App() {
         setShowWorkspaceSetup(true);
         setWorkspacePage(null);
         setWorkspaceFlowOrigin("setup");
+        setWorkspaceLoading(false);
 
         return false;
       }
-
-      // -----------------------------------------------------
-      // RESTORE LAST ACTIVE WORKSPACE
-      // -----------------------------------------------------
 
       const storedWorkspaceId =
         localStorage.getItem(
@@ -694,7 +738,11 @@ function App() {
         storedWorkspaceId
           ? workspaces.find(
               (workspace) =>
-                String(workspace.id) ===
+                String(
+                  workspace.id ||
+                    workspace._id ||
+                    ""
+                ) ===
                 String(storedWorkspaceId)
             )
           : null;
@@ -714,9 +762,12 @@ function App() {
         );
       }
 
-      // -----------------------------------------------------
-      // RESTORE WORKSPACE STATE
-      // -----------------------------------------------------
+      const selectedWorkspaceRole =
+        selectedWorkspace?.role === "leader"
+          ? "leader"
+          : selectedWorkspace?.role === "member"
+          ? "member"
+          : null;
 
       setWorkspaceId(
         String(selectedWorkspaceId)
@@ -732,6 +783,10 @@ function App() {
       setWorkspaceDescription(
         selectedWorkspace.description ||
           ""
+      );
+
+      setCurrentWorkspaceRole(
+        selectedWorkspaceRole
       );
 
       localStorage.setItem(
@@ -758,20 +813,17 @@ function App() {
             selectedWorkspace.joinCode
           ).toUpperCase()
         );
+      } else {
+        localStorage.removeItem(
+          "collabboardWorkspaceCode"
+        );
       }
 
-      // -----------------------------------------------------
-      // LOAD REAL MEMBERS
-      // -----------------------------------------------------
+      setTasks([]);
+      setTeamMembers([]);
 
-      const restoredMembers =
-        await loadWorkspaceMembers(
-          String(selectedWorkspaceId)
-        );
-
-      await loadWorkspaceTasks(
-        String(selectedWorkspaceId),
-        restoredMembers
+      await loadWorkspaceData(
+        String(selectedWorkspaceId)
       );
 
       handleClearFilters();
@@ -780,6 +832,8 @@ function App() {
       setWorkspacePage(null);
       setWorkspaceFlowOrigin(null);
       setActiveSection("dashboard");
+      setWorkspaceLoadError(null);
+      setWorkspaceLoading(false);
 
       return true;
     } catch (error) {
@@ -788,9 +842,12 @@ function App() {
         error
       );
 
-      setShowWorkspaceSetup(true);
-      setWorkspacePage(null);
-      setWorkspaceFlowOrigin("setup");
+      setWorkspaceLoadError(
+        error.message ||
+          "Unable to load your workspace."
+      );
+
+      setWorkspaceLoading(false);
 
       return false;
     }
@@ -798,6 +855,7 @@ function App() {
 
   useEffect(() => {
     if (!isLoggedIn || !authUser) {
+      setWorkspaceLoading(false);
       return;
     }
 
@@ -816,16 +874,25 @@ function App() {
     let normalizedAssignees = [];
 
     if (Array.isArray(task.assignees)) {
-      normalizedAssignees = task.assignees.filter(Boolean);
+      normalizedAssignees =
+        task.assignees.filter(Boolean);
     } else if (task.assignedTo) {
-      normalizedAssignees = [task.assignedTo];
+      normalizedAssignees = [
+        task.assignedTo,
+      ];
     }
 
     return {
       ...task,
-      id: task.id || task._id || "",
-      assignees: normalizedAssignees,
-      dueDate: task.dueDate || "",
+      id:
+        task.id ||
+        task._id ||
+        "",
+      assignees:
+        normalizedAssignees,
+      dueDate:
+        task.dueDate ||
+        "",
     };
   }
 
@@ -833,72 +900,110 @@ function App() {
   // TASK STATE
   // =========================================================
 
-  const normalizedInitialTasks =
-    INITIAL_EXISTING_TASKS.map(
-      (task) =>
-        normalizeTask(task)
-    );
-
   const [tasks, setTasks] =
-    useState(normalizedInitialTasks);
+    useState([]);
 
   // =========================================================
   // MAP BACKEND TASK TO FRONTEND TASK
   // =========================================================
 
-  function mapBackendTask(task, membersOverride) {
+  function mapBackendTask(
+    task,
+    membersOverride
+  ) {
     if (!task) {
       return null;
     }
 
     const availableMembers =
-      Array.isArray(membersOverride)
+      Array.isArray(
+        membersOverride
+      )
         ? membersOverride
         : teamMembers;
 
     const populatedAssignees =
-      Array.isArray(task.assigneeIds)
+      Array.isArray(
+        task.assigneeIds
+      )
         ? task.assigneeIds
         : [];
 
-    const assigneeIds = populatedAssignees
-      .map((assignee) =>
-        typeof assignee === "object"
-          ? assignee?._id || assignee?.id
-          : assignee
-      )
-      .filter(Boolean)
-      .map((id) => String(id));
-
-    const assignees = populatedAssignees
-      .map((assignee) => {
-        if (typeof assignee === "object") {
-          return assignee?.name || "";
-        }
-
-        const member = availableMembers.find(
-          (item) =>
-            String(item.id || item._id || "") ===
-            String(assignee)
+    const assigneeIds =
+      populatedAssignees
+        .map(
+          (assignee) =>
+            typeof assignee ===
+            "object"
+              ? assignee?._id ||
+                assignee?.id
+              : assignee
+        )
+        .filter(Boolean)
+        .map((id) =>
+          String(id)
         );
 
-        return member?.name || "";
-      })
-      .filter(Boolean);
+    const assignees =
+      populatedAssignees
+        .map((assignee) => {
+          if (
+            typeof assignee ===
+            "object"
+          ) {
+            return (
+              assignee?.name ||
+              ""
+            );
+          }
 
-    const dueDate = task.deadline
-      ? new Date(task.deadline).toISOString().slice(0, 10)
-      : "";
+          const member =
+            availableMembers.find(
+              (item) =>
+                String(
+                  item.userId ||
+                    item.id ||
+                    item._id ||
+                    ""
+                ) ===
+                String(assignee)
+            );
+
+          return (
+            member?.name ||
+            ""
+          );
+        })
+        .filter(Boolean);
+
+    const dueDate =
+      task.deadline
+        ? new Date(
+            task.deadline
+          )
+            .toISOString()
+            .slice(0, 10)
+        : "";
 
     return normalizeTask({
       ...task,
-      id: String(task._id || task.id),
+      id: String(
+        task._id ||
+          task.id
+      ),
       assigneeIds,
       assignees,
       dueDate,
-      createdAt: task.createdAt || null,
-      completedAt: task.completedAt || null,
-      createdBy: task.createdBy?._id || task.createdBy || null,
+      createdAt:
+        task.createdAt ||
+        null,
+      completedAt:
+        task.completedAt ||
+        null,
+      createdBy:
+        task.createdBy?._id ||
+        task.createdBy ||
+        null,
     });
   }
 
@@ -916,7 +1021,9 @@ function App() {
     }
 
     const token =
-      localStorage.getItem("collabboardToken");
+      localStorage.getItem(
+        "collabboardToken"
+      );
 
     if (!token) {
       setTasks([]);
@@ -929,7 +1036,8 @@ function App() {
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization:
+              `Bearer ${token}`,
           },
         }
       );
@@ -937,14 +1045,18 @@ function App() {
       let data;
 
       try {
-        data = await response.json();
+        data =
+          await response.json();
       } catch (error) {
         throw new Error(
           "The server returned an invalid tasks response."
         );
       }
 
-      if (!response.ok || !data.success) {
+      if (
+        !response.ok ||
+        !data.success
+      ) {
         throw new Error(
           data.message ||
             "Unable to load workspace tasks."
@@ -952,20 +1064,25 @@ function App() {
       }
 
       const backendTasks =
-        Array.isArray(data.tasks)
+        Array.isArray(
+          data.tasks
+        )
           ? data.tasks
           : [];
 
-      const mappedTasks = backendTasks
-        .map((task) =>
-          mapBackendTask(
-            task,
-            membersOverride
+      const mappedTasks =
+        backendTasks
+          .map((task) =>
+            mapBackendTask(
+              task,
+              membersOverride
+            )
           )
-        )
-        .filter(Boolean);
+          .filter(Boolean);
 
-      setTasks(mappedTasks);
+      setTasks(
+        mappedTasks
+      );
 
       return mappedTasks;
     } catch (error) {
@@ -974,40 +1091,150 @@ function App() {
         error
       );
 
-      setTasks([]);
-      return [];
+      throw error;
     }
   }
 
-  function getTaskAssigneeIds(task) {
+  // =========================================================
+  // GET TASK ASSIGNEE IDS
+  // =========================================================
+  //
+  // IMPORTANT:
+  //
+  // Workspace membership has its own ID.
+  // Registered CollabBoard users have their own User ID.
+  //
+  // Tasks must always receive the real User ID.
+  //
+  // =========================================================
+
+  function getTaskAssigneeIds(
+    task
+  ) {
     if (!task) {
       return [];
     }
 
-    if (Array.isArray(task.assigneeIds)) {
-      return task.assigneeIds
-        .map((assignee) =>
-          typeof assignee === "object"
-            ? assignee?._id || assignee?.id
-            : assignee
-        )
-        .filter(Boolean)
-        .map((id) => String(id));
-    }
+    // -----------------------------------------------------
+    // RESOLVE ANY ID TO THE REGISTERED USER ID
+    // -----------------------------------------------------
 
-    const names = getTaskAssignees(task);
+    const resolveToUserId = (rawId) => {
+      if (!rawId) {
+        return null;
+      }
 
-    return names
-      .map((name) => {
-        const member = teamMembers.find(
+      const normalizedId =
+        typeof rawId === "object"
+          ? rawId?._id ||
+            rawId?.id ||
+            rawId?.userId
+          : rawId;
+
+      if (!normalizedId) {
+        return null;
+      }
+
+      const member =
+        teamMembers.find(
           (item) =>
-            String(item.name || "") === String(name)
+            String(
+              item.userId ||
+                ""
+            ) ===
+              String(normalizedId) ||
+            String(
+              item.membershipId ||
+                ""
+            ) ===
+              String(normalizedId) ||
+            String(
+              item.id ||
+                item._id ||
+                ""
+            ) ===
+              String(normalizedId)
         );
 
-        return member?.id || member?._id || null;
-      })
-      .filter(Boolean)
-      .map((id) => String(id));
+      return member?.userId
+        ? String(
+            member.userId
+          )
+        : null;
+    };
+
+    // -----------------------------------------------------
+    // PREFERRED SOURCE: SELECTED ASSIGNEE IDS
+    // -----------------------------------------------------
+
+    if (
+      Array.isArray(
+        task.assigneeIds
+      )
+    ) {
+      const resolvedIds =
+        task.assigneeIds
+          .map(
+            (assignee) =>
+              resolveToUserId(
+                assignee
+              )
+          )
+          .filter(Boolean);
+
+      if (
+        resolvedIds.length > 0
+      ) {
+        return [
+          ...new Set(
+            resolvedIds
+          ),
+        ];
+      }
+    }
+
+    // -----------------------------------------------------
+    // FALLBACK: SELECTED ASSIGNEE NAMES
+    // -----------------------------------------------------
+
+    const names =
+      getTaskAssignees(
+        task
+      );
+
+    const resolvedNameIds =
+      names
+        .map((name) => {
+          const member =
+            teamMembers.find(
+              (item) =>
+                String(
+                  item.name ||
+                    ""
+                )
+                  .trim()
+                  .toLowerCase() ===
+                String(
+                  name ||
+                    ""
+                )
+                  .trim()
+                  .toLowerCase()
+            );
+
+          return member?.userId
+            ? String(
+                member.userId
+              )
+            : null;
+        })
+        .filter(Boolean);
+
+    return [
+      ...new Set(
+        resolvedNameIds
+      ),
+    ];
   }
 
   // =========================================================
@@ -1036,7 +1263,9 @@ function App() {
   // GET TASK ASSIGNEES
   // =========================================================
 
-  function getTaskAssignees(task) {
+  function getTaskAssignees(
+    task
+  ) {
     if (!task) {
       return [];
     }
@@ -1063,56 +1292,12 @@ function App() {
   }
 
   // =========================================================
-  // RESET TEAM MEMBERS
-  // =========================================================
-
-  function resetTeamMembers() {
-    if (!authUser) {
-      return [];
-    }
-
-    return [
-      {
-        ...authUser,
-        id:
-          authUser.id ||
-          authUser._id,
-        role: "Member",
-        workspaceRole: null,
-        status: "Active",
-        joined: "",
-        isCurrentUser: true,
-      },
-    ];
-  }
-
-  // =========================================================
-  // RESET TASKS
-  // =========================================================
-
-  function resetTasks() {
-    return INITIAL_EXISTING_TASKS.map(
-      (task) => ({
-        ...normalizeTask(task),
-        assignees: [
-          ...getTaskAssignees(task),
-        ],
-      })
-    );
-  }
-
-  // =========================================================
   // ADD TEAM MEMBER
   // =========================================================
-  //
-  // Team members are stored in MongoDB as workspace memberships.
-  // The backend identifies the registered user by email, so the
-  // frontend must call the real API instead of only updating React
-  // state.
-  //
-  // =========================================================
 
-  async function handleAddMember(newMember) {
+  async function handleAddMember(
+    newMember
+  ) {
     if (!newMember) {
       return;
     }
@@ -1157,6 +1342,49 @@ function App() {
       return;
     }
 
+    const numericAge =
+      newMember.age === "" ||
+      newMember.age === null ||
+      newMember.age === undefined
+        ? null
+        : Number(newMember.age);
+
+    const payload = {
+      name: String(
+        newMember.name ||
+          ""
+      ).trim(),
+      email,
+      age:
+        numericAge === null ||
+        Number.isNaN(numericAge)
+          ? null
+          : numericAge,
+      gender: String(
+        newMember.gender ||
+          ""
+      ).trim(),
+      projectRole: String(
+        newMember.projectRole ||
+          ""
+      ).trim(),
+      currentJob: String(
+        newMember.currentJob ||
+          ""
+      ).trim(),
+      bio: String(
+        newMember.bio ||
+          ""
+      ).trim(),
+    };
+
+    if (!payload.name) {
+      window.alert(
+        "Member name is required."
+      );
+      return;
+    }
+
     try {
       const response = await fetch(
         `http://localhost:5000/api/workspaces/${targetWorkspaceId}/members`,
@@ -1168,9 +1396,9 @@ function App() {
             Authorization:
               `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            email,
-          }),
+          body: JSON.stringify(
+            payload
+          ),
         }
       );
 
@@ -1194,8 +1422,6 @@ function App() {
         );
       }
 
-      // Reload the real workspace membership list from MongoDB
-      // so the UI and backend remain synchronized.
       await loadWorkspaceMembers(
         String(targetWorkspaceId)
       );
@@ -1226,8 +1452,12 @@ function App() {
     const existingMember =
       teamMembers.find(
         (member) =>
-          String(member.id) ===
-          String(updatedMember.id)
+          String(
+            member.id
+          ) ===
+          String(
+            updatedMember.id
+          )
       );
 
     if (!existingMember) {
@@ -1268,12 +1498,13 @@ function App() {
       updatedMember.name ||
       oldName;
 
-    const userId =
+    const memberIdentifier =
+      updatedMember.membershipId ||
       updatedMember.id ||
       updatedMember._id ||
       "";
 
-    if (!userId) {
+    if (!memberIdentifier) {
       window.alert(
         "Unable to identify the member to update."
       );
@@ -1299,6 +1530,9 @@ function App() {
       email:
         updatedMember.email ??
         "",
+      currentPassword:
+        updatedMember.currentPassword ??
+        "",
       bio:
         updatedMember.bio ??
         "",
@@ -1314,26 +1548,30 @@ function App() {
     };
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/workspaces/${targetWorkspaceId}/members/${userId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type":
-              "application/json",
-            Authorization:
-              `Bearer ${token}`,
-          },
-          body: JSON.stringify(
-            payload
-          ),
-        }
-      );
+      const response =
+        await fetch(
+          `http://localhost:5000/api/workspaces/${targetWorkspaceId}/members/${memberIdentifier}`,
+          {
+            method:
+              "PUT",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization:
+                `Bearer ${token}`,
+            },
+            body:
+              JSON.stringify(
+                payload
+              ),
+          }
+        );
 
       let data;
 
       try {
-        data = await response.json();
+        data =
+          await response.json();
       } catch (error) {
         throw new Error(
           "The server returned an invalid member update response."
@@ -1350,17 +1588,11 @@ function App() {
         );
       }
 
-      // -----------------------------------------------------
-      // REFRESH THE REAL WORKSPACE MEMBERS
-      // -----------------------------------------------------
-
       await loadWorkspaceMembers(
-        String(targetWorkspaceId)
+        String(
+          targetWorkspaceId
+        )
       );
-
-      // -----------------------------------------------------
-      // UPDATE TASK ASSIGNMENTS IF THE MEMBER WAS RENAMED
-      // -----------------------------------------------------
 
       if (
         oldName &&
@@ -1378,7 +1610,9 @@ function App() {
 
                 const updatedAssignees =
                   currentAssignees.map(
-                    (memberName) =>
+                    (
+                      memberName
+                    ) =>
                       memberName ===
                       oldName
                         ? newName
@@ -1402,7 +1636,9 @@ function App() {
         setMemberFilter(
           (currentFilter) =>
             currentFilter.map(
-              (memberName) =>
+              (
+                memberName
+              ) =>
                 memberName ===
                 oldName
                   ? newName
@@ -1411,21 +1647,64 @@ function App() {
         );
       }
 
-      // Keep the locally cached authenticated profile aligned
-      // when the current user edits their own profile.
-      const authUserId = String(
-        authUser?.id ||
-          authUser?._id ||
-          ""
-      );
+      const authUserId =
+        String(
+          authUser?.id ||
+            authUser?._id ||
+            ""
+        );
 
       if (
         authUserId &&
-        authUserId === String(userId)
+        authUserId ===
+          String(
+            updatedMember.userId ||
+              updatedMember.id ||
+              ""
+          )
       ) {
         const nextAuthUser = {
           ...authUser,
-          ...updatedMember,
+          name:
+            updatedMember.name ??
+            authUser.name ??
+            "",
+          age:
+            updatedMember.age ??
+            authUser.age ??
+            "",
+          gender:
+            updatedMember.gender ??
+            authUser.gender ??
+            "",
+          projectRole:
+            updatedMember.projectRole ??
+            authUser.projectRole ??
+            "",
+          currentJob:
+            updatedMember.currentJob ??
+            authUser.currentJob ??
+            "",
+          email:
+            updatedMember.email ??
+            authUser.email ??
+            "",
+          bio:
+            updatedMember.bio ??
+            authUser.bio ??
+            "",
+          phone:
+            updatedMember.phone ??
+            authUser.phone ??
+            "",
+          location:
+            updatedMember.location ??
+            authUser.location ??
+            "",
+          timeZone:
+            updatedMember.timeZone ??
+            authUser.timeZone ??
+            "",
           id:
             authUser.id ||
             authUser._id,
@@ -1465,8 +1744,19 @@ function App() {
     const memberToDelete =
       teamMembers.find(
         (member) =>
-          String(member.id) ===
-          String(memberId)
+          String(
+            member.id
+          ) ===
+          String(
+            memberId
+          ) ||
+          String(
+            member.membershipId ||
+              ""
+          ) ===
+          String(
+            memberId
+          )
       );
 
     if (!memberToDelete) {
@@ -1510,21 +1800,29 @@ function App() {
       "";
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/workspaces/${targetWorkspaceId}/members/${memberId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-          },
-        }
-      );
+      const memberIdentifier =
+        memberToDelete.membershipId ||
+        memberToDelete.id ||
+        memberId;
+
+      const response =
+        await fetch(
+          `http://localhost:5000/api/workspaces/${targetWorkspaceId}/members/${memberIdentifier}`,
+          {
+            method:
+              "DELETE",
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+            },
+          }
+        );
 
       let data;
 
       try {
-        data = await response.json();
+        data =
+          await response.json();
       } catch (error) {
         throw new Error(
           "The server returned an invalid member removal response."
@@ -1541,17 +1839,11 @@ function App() {
         );
       }
 
-      // -----------------------------------------------------
-      // RELOAD THE REAL MEMBER LIST FROM MONGODB
-      // -----------------------------------------------------
-
       await loadWorkspaceMembers(
-        String(targetWorkspaceId)
+        String(
+          targetWorkspaceId
+        )
       );
-
-      // -----------------------------------------------------
-      // REMOVE MEMBER FROM LOCAL TASK ASSIGNMENTS
-      // -----------------------------------------------------
 
       if (deletedName) {
         setTasks(
@@ -1572,10 +1864,8 @@ function App() {
 
                 return {
                   ...task,
-
                   assignees:
                     updatedAssignees,
-
                   assignedTo:
                     task.assignedTo ===
                     deletedName
@@ -1612,18 +1902,24 @@ function App() {
   // ADD TASK
   // =========================================================
 
-  async function handleAddTask(newTask) {
+  async function handleAddTask(
+    newTask
+  ) {
     if (!newTask) {
       return;
     }
 
     const targetWorkspaceId =
       workspaceId ||
-      localStorage.getItem("collabboardWorkspaceId") ||
+      localStorage.getItem(
+        "collabboardWorkspaceId"
+      ) ||
       "";
 
     const token =
-      localStorage.getItem("collabboardToken");
+      localStorage.getItem(
+        "collabboardToken"
+      );
 
     if (!targetWorkspaceId) {
       window.alert(
@@ -1640,35 +1936,66 @@ function App() {
     }
 
     const payload = {
-      title: String(newTask.title || "").trim(),
-      description: String(newTask.description || "").trim(),
-      status: newTask.status || "todo",
-      priority: newTask.priority || "Medium",
-      assigneeIds: getTaskAssigneeIds(newTask),
-      deadline: newTask.dueDate || newTask.deadline || null,
+      title:
+        String(
+          newTask.title ||
+            ""
+        ).trim(),
+      description:
+        String(
+          newTask.description ||
+            ""
+        ).trim(),
+      status:
+        newTask.status ||
+        "todo",
+      priority:
+        newTask.priority ||
+        "Medium",
+      assigneeIds:
+        getTaskAssigneeIds(
+          newTask
+        ),
+      deadline:
+        newTask.dueDate ||
+        newTask.deadline ||
+        null,
     };
 
     if (!payload.title) {
-      window.alert("Task title is required.");
+      window.alert(
+        "Task title is required."
+      );
       return;
     }
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/tasks/${targetWorkspaceId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response =
+        await fetch(
+          `http://localhost:5000/api/tasks/${targetWorkspaceId}`,
+          {
+            method:
+              "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization:
+                `Bearer ${token}`,
+            },
+            body:
+              JSON.stringify(
+                payload
+              ),
+          }
+        );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
-      if (!response.ok || !data.success) {
+      if (
+        !response.ok ||
+        !data.success
+      ) {
         throw new Error(
           data.message ||
             "Unable to create the task."
@@ -1676,10 +2003,16 @@ function App() {
       }
 
       await loadWorkspaceTasks(
-        String(targetWorkspaceId)
+        String(
+          targetWorkspaceId
+        )
       );
     } catch (error) {
-      console.error("Create task error:", error);
+      console.error(
+        "Create task error:",
+        error
+      );
+
       window.alert(
         error.message ||
           "Unable to create the task."
@@ -1697,13 +2030,20 @@ function App() {
   ) {
     const targetWorkspaceId =
       workspaceId ||
-      localStorage.getItem("collabboardWorkspaceId") ||
+      localStorage.getItem(
+        "collabboardWorkspaceId"
+      ) ||
       "";
 
     const token =
-      localStorage.getItem("collabboardToken");
+      localStorage.getItem(
+        "collabboardToken"
+      );
 
-    if (!targetWorkspaceId || !token) {
+    if (
+      !targetWorkspaceId ||
+      !token
+    ) {
       window.alert(
         "Your workspace session is not available. Please log in again."
       );
@@ -1711,23 +2051,33 @@ function App() {
     }
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/tasks/${targetWorkspaceId}/${taskId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            status: newStatus,
-          }),
-        }
-      );
+      const response =
+        await fetch(
+          `http://localhost:5000/api/tasks/${targetWorkspaceId}/${taskId}`,
+          {
+            method:
+              "PUT",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization:
+                `Bearer ${token}`,
+            },
+            body:
+              JSON.stringify({
+                status:
+                  newStatus,
+              }),
+          }
+        );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
-      if (!response.ok || !data.success) {
+      if (
+        !response.ok ||
+        !data.success
+      ) {
         throw new Error(
           data.message ||
             "Unable to update the task status."
@@ -1735,10 +2085,16 @@ function App() {
       }
 
       await loadWorkspaceTasks(
-        String(targetWorkspaceId)
+        String(
+          targetWorkspaceId
+        )
       );
     } catch (error) {
-      console.error("Move task error:", error);
+      console.error(
+        "Move task error:",
+        error
+      );
+
       window.alert(
         error.message ||
           "Unable to update the task status."
@@ -1750,16 +2106,25 @@ function App() {
   // DELETE TASK
   // =========================================================
 
-  async function handleDeleteTask(taskId) {
+  async function handleDeleteTask(
+    taskId
+  ) {
     const targetWorkspaceId =
       workspaceId ||
-      localStorage.getItem("collabboardWorkspaceId") ||
+      localStorage.getItem(
+        "collabboardWorkspaceId"
+      ) ||
       "";
 
     const token =
-      localStorage.getItem("collabboardToken");
+      localStorage.getItem(
+        "collabboardToken"
+      );
 
-    if (!targetWorkspaceId || !token) {
+    if (
+      !targetWorkspaceId ||
+      !token
+    ) {
       window.alert(
         "Your workspace session is not available. Please log in again."
       );
@@ -1767,19 +2132,26 @@ function App() {
     }
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/tasks/${targetWorkspaceId}/${taskId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response =
+        await fetch(
+          `http://localhost:5000/api/tasks/${targetWorkspaceId}/${taskId}`,
+          {
+            method:
+              "DELETE",
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+            },
+          }
+        );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
-      if (!response.ok || !data.success) {
+      if (
+        !response.ok ||
+        !data.success
+      ) {
         throw new Error(
           data.message ||
             "Unable to delete the task."
@@ -1787,10 +2159,16 @@ function App() {
       }
 
       await loadWorkspaceTasks(
-        String(targetWorkspaceId)
+        String(
+          targetWorkspaceId
+        )
       );
     } catch (error) {
-      console.error("Delete task error:", error);
+      console.error(
+        "Delete task error:",
+        error
+      );
+
       window.alert(
         error.message ||
           "Unable to delete the task."
@@ -1802,25 +2180,35 @@ function App() {
   // EDIT TASK
   // =========================================================
 
-  async function handleEditTask(updatedTask) {
+  async function handleEditTask(
+    updatedTask
+  ) {
     if (!updatedTask) {
       return;
     }
 
     const targetWorkspaceId =
       workspaceId ||
-      localStorage.getItem("collabboardWorkspaceId") ||
+      localStorage.getItem(
+        "collabboardWorkspaceId"
+      ) ||
       "";
 
     const token =
-      localStorage.getItem("collabboardToken");
+      localStorage.getItem(
+        "collabboardToken"
+      );
 
     const taskId =
       updatedTask.id ||
       updatedTask._id ||
       "";
 
-    if (!targetWorkspaceId || !token || !taskId) {
+    if (
+      !targetWorkspaceId ||
+      !token ||
+      !taskId
+    ) {
       window.alert(
         "Unable to identify the task or workspace."
       );
@@ -1828,33 +2216,62 @@ function App() {
     }
 
     const payload = {
-      title: String(updatedTask.title || "").trim(),
-      description: String(updatedTask.description || "").trim(),
-      status: updatedTask.status || "todo",
-      priority: updatedTask.priority || "Medium",
-      assigneeIds: getTaskAssigneeIds(updatedTask),
+      title:
+        String(
+          updatedTask.title ||
+            ""
+        ).trim(),
+      description:
+        String(
+          updatedTask.description ||
+            ""
+        ).trim(),
+      status:
+        updatedTask.status ||
+        "todo",
+      priority:
+        updatedTask.priority ||
+        "Medium",
+      assigneeIds:
+        getTaskAssigneeIds(
+          updatedTask
+        ),
       deadline:
-        updatedTask.dueDate !== undefined
-          ? updatedTask.dueDate || null
-          : updatedTask.deadline || null,
+        updatedTask.dueDate !==
+        undefined
+          ? updatedTask.dueDate ||
+            null
+          : updatedTask.deadline ||
+            null,
     };
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/tasks/${targetWorkspaceId}/${taskId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response =
+        await fetch(
+          `http://localhost:5000/api/tasks/${targetWorkspaceId}/${taskId}`,
+          {
+            method:
+              "PUT",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization:
+                `Bearer ${token}`,
+            },
+            body:
+              JSON.stringify(
+                payload
+              ),
+          }
+        );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
-      if (!response.ok || !data.success) {
+      if (
+        !response.ok ||
+        !data.success
+      ) {
         throw new Error(
           data.message ||
             "Unable to update the task."
@@ -1862,10 +2279,16 @@ function App() {
       }
 
       await loadWorkspaceTasks(
-        String(targetWorkspaceId)
+        String(
+          targetWorkspaceId
+        )
       );
     } catch (error) {
-      console.error("Edit task error:", error);
+      console.error(
+        "Edit task error:",
+        error
+      );
+
       window.alert(
         error.message ||
           "Unable to update the task."
@@ -1876,21 +2299,15 @@ function App() {
   // =========================================================
   // WORKSPACE NAME
   // =========================================================
-  //
-  // Workspace name changes are persisted through the backend.
-  // The backend allows this operation only for the active Team
-  // Leader, so the API remains the final authority for the
-  // permission check.
-  //
-  // =========================================================
 
   async function handleWorkspaceNameChange(
     newName
   ) {
-    const trimmedName = String(
-      newName ||
-      ""
-    ).trim();
+    const trimmedName =
+      String(
+        newName ||
+          ""
+      ).trim();
 
     if (!trimmedName) {
       return;
@@ -1923,26 +2340,31 @@ function App() {
     }
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/workspaces/${targetWorkspaceId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type":
-              "application/json",
-            Authorization:
-              `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: trimmedName,
-          }),
-        }
-      );
+      const response =
+        await fetch(
+          `http://localhost:5000/api/workspaces/${targetWorkspaceId}`,
+          {
+            method:
+              "PUT",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization:
+                `Bearer ${token}`,
+            },
+            body:
+              JSON.stringify({
+                name:
+                  trimmedName,
+              }),
+          }
+        );
 
       let data;
 
       try {
-        data = await response.json();
+        data =
+          await response.json();
       } catch (error) {
         throw new Error(
           "The server returned an invalid workspace update response."
@@ -2353,8 +2775,12 @@ function App() {
           "newest"
         ) {
           return (
-            new Date(b.createdAt || 0).getTime() -
-            new Date(a.createdAt || 0).getTime()
+            new Date(
+              b.createdAt || 0
+            ).getTime() -
+            new Date(
+              a.createdAt || 0
+            ).getTime()
           );
         }
 
@@ -2363,8 +2789,12 @@ function App() {
           "oldest"
         ) {
           return (
-            new Date(a.createdAt || 0).getTime() -
-            new Date(b.createdAt || 0).getTime()
+            new Date(
+              a.createdAt || 0
+            ).getTime() -
+            new Date(
+              b.createdAt || 0
+            ).getTime()
           );
         }
 
@@ -2446,10 +2876,12 @@ function App() {
           "title-az"
         ) {
           return String(
-            a.title || ""
+            a.title ||
+              ""
           ).localeCompare(
             String(
-              b.title || ""
+              b.title ||
+                ""
             )
           );
         }
@@ -2459,10 +2891,12 @@ function App() {
           "title-za"
         ) {
           return String(
-            b.title || ""
+            b.title ||
+              ""
           ).localeCompare(
             String(
-              a.title || ""
+              a.title ||
+                ""
             )
           );
         }
@@ -2604,6 +3038,9 @@ function App() {
   // =========================================================
 
   function finishWorkspaceFlow() {
+    setWorkspaceLoading(false);
+    setWorkspaceLoadError(null);
+
     setShowWorkspaceSetup(
       false
     );
@@ -2685,27 +3122,21 @@ function App() {
             return;
           }
 
-          // ---------------------------------------------------
-          // STORE THE REAL LOGGED-IN USER
-          // ---------------------------------------------------
-
           setAuthUser(
             loggedInUser
           );
 
-          // ---------------------------------------------------
-          // CLEAR STALE FRONTEND TEAM DATA
-          // ---------------------------------------------------
-
-          setTeamMembers(
-            buildTeamMembersForCurrentUser(
-              loggedInUser
-            )
+          setTeamMembers([]);
+          setTasks([]);
+          setCurrentWorkspaceRole(
+            null
           );
-
-          // ---------------------------------------------------
-          // START AUTHENTICATED SESSION
-          // ---------------------------------------------------
+          setWorkspaceLoadError(
+            null
+          );
+          setWorkspaceLoading(
+            true
+          );
 
           setIsLoggedIn(true);
           setCurrentPage("home");
@@ -2720,6 +3151,217 @@ function App() {
           )
         }
       />
+    );
+  }
+
+  // =========================================================
+  // WORKSPACE LOADING
+  // =========================================================
+
+  if (
+    isLoggedIn &&
+    workspaceLoading &&
+    !workspacePage
+  ) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display:
+            "flex",
+          alignItems:
+            "center",
+          justifyContent:
+            "center",
+          fontFamily:
+            "inherit",
+          background:
+            "#f6f7fb",
+          color:
+            "#151a2d",
+        }}
+      >
+        <div
+          style={{
+            textAlign:
+              "center",
+            padding:
+              "32px",
+          }}
+        >
+          <h2
+            style={{
+              marginBottom:
+                "8px",
+            }}
+          >
+            Loading workspace...
+          </h2>
+
+          <p
+            style={{
+              margin: 0,
+              opacity:
+                0.7,
+            }}
+          >
+            Loading your workspace,
+            team members,
+            and tasks.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================
+  // WORKSPACE LOAD ERROR
+  // =========================================================
+
+  if (
+    isLoggedIn &&
+    workspaceLoadError &&
+    !workspacePage
+  ) {
+    return (
+      <div
+        style={{
+          minHeight:
+            "100vh",
+          display:
+            "flex",
+          alignItems:
+            "center",
+          justifyContent:
+            "center",
+          fontFamily:
+            "inherit",
+          background:
+            "#f6f7fb",
+          color:
+            "#151a2d",
+        }}
+      >
+        <div
+          style={{
+            width:
+              "min(520px, 90%)",
+            padding:
+              "32px",
+            borderRadius:
+              "16px",
+            background:
+              "#ffffff",
+            boxShadow:
+              "0 12px 30px rgba(0,0,0,0.08)",
+            textAlign:
+              "center",
+          }}
+        >
+          <h2
+            style={{
+              marginBottom:
+                "10px",
+            }}
+          >
+            Workspace could not be loaded
+          </h2>
+
+          <p
+            style={{
+              margin:
+                "0 0 20px",
+              lineHeight:
+                1.5,
+              opacity:
+                0.75,
+            }}
+          >
+            {workspaceLoadError}
+          </p>
+
+          <div
+            style={{
+              display:
+                "flex",
+              gap:
+                "10px",
+              justifyContent:
+                "center",
+              flexWrap:
+                "wrap",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setWorkspaceLoadError(
+                  null
+                );
+
+                restoreExistingWorkspaceAfterLogin();
+              }}
+              style={{
+                border:
+                  "none",
+                borderRadius:
+                  "10px",
+                padding:
+                  "11px 18px",
+                cursor:
+                  "pointer",
+                fontWeight:
+                  700,
+                background:
+                  "#7135e8",
+                color:
+                  "#ffffff",
+              }}
+            >
+              Try Again
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setWorkspaceLoadError(
+                  null
+                );
+
+                setWorkspacePage(
+                  null
+                );
+
+                setShowWorkspaceSetup(
+                  true
+                );
+
+                setWorkspaceFlowOrigin(
+                  "setup"
+                );
+              }}
+              style={{
+                border:
+                  "1px solid #d9dce8",
+                borderRadius:
+                  "10px",
+                padding:
+                  "11px 18px",
+                cursor:
+                  "pointer",
+                fontWeight:
+                  700,
+                background:
+                  "#ffffff",
+                color:
+                  "#151a2d",
+              }}
+            >
+              Workspace Setup
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -2759,75 +3401,132 @@ function App() {
         onWorkspaceCreated={async (
           workspace
         ) => {
-          const newName =
-            workspace?.name?.trim() ||
-            "New Workspace";
+          try {
+            const newName =
+              workspace?.name?.trim() ||
+              "New Workspace";
 
-          const newDescription =
-            workspace?.description ||
-            "";
+            const newDescription =
+              workspace?.description ||
+              "";
 
-          const newCode =
-            workspace?.inviteCode ||
-            "";
+            const newCode =
+              String(
+                workspace?.joinCode ||
+                  workspace?.inviteCode ||
+                  ""
+              )
+                .trim()
+                .toUpperCase();
 
-          setWorkspaceType(
-            "new"
-          );
+            const newWorkspaceId =
+              workspace?.id ||
+              workspace?._id ||
+              "";
 
-          setWorkspaceName(
-            newName
-          );
+            if (!newWorkspaceId) {
+              throw new Error(
+                "Workspace was created but no workspace ID was returned."
+              );
+            }
 
-          setWorkspaceDescription(
-            newDescription
-          );
+            setWorkspaceLoading(
+              true
+            );
 
-          setTasks([]);
+            setWorkspaceLoadError(
+              null
+            );
 
-          const newWorkspaceId =
-            workspace?.id ||
-            workspace?._id ||
-            "";
+            setWorkspaceType(
+              "new"
+            );
 
-          setWorkspaceId(
-            String(newWorkspaceId)
-          );
+            setWorkspaceName(
+              newName
+            );
 
-          if (newWorkspaceId) {
+            setWorkspaceDescription(
+              newDescription
+            );
+
+            setCurrentWorkspaceRole(
+              "leader"
+            );
+
+            setTeamMembers(
+              []
+            );
+
+            setTasks(
+              []
+            );
+
+            setWorkspaceId(
+              String(
+                newWorkspaceId
+              )
+            );
+
             localStorage.setItem(
               "collabboardWorkspaceId",
-              String(newWorkspaceId)
+              String(
+                newWorkspaceId
+              )
             );
-          }
 
-          if (newWorkspaceId) {
-            const createdMembers =
-              await loadWorkspaceMembers(
-                String(newWorkspaceId)
-              );
-
-            await loadWorkspaceTasks(
-              String(newWorkspaceId),
-              createdMembers
-            );
-          }
-
-          localStorage.setItem(
-            "collabboardWorkspaceName",
-            newName
-          );
-
-          if (newCode) {
             localStorage.setItem(
-              "collabboardWorkspaceCode",
-              newCode
+              "collabboardWorkspaceName",
+              newName
+            );
+
+            localStorage.setItem(
+              "collabboardWorkspaceDescription",
+              newDescription
+            );
+
+            if (newCode) {
+              localStorage.setItem(
+                "collabboardWorkspaceCode",
+                newCode
+              );
+            } else {
+              localStorage.removeItem(
+                "collabboardWorkspaceCode"
+              );
+            }
+
+            await loadWorkspaceData(
+              String(
+                newWorkspaceId
+              )
+            );
+
+            handleClearFilters();
+            finishWorkspaceFlow();
+          } catch (error) {
+            console.error(
+              "Create workspace frontend flow error:",
+              error
+            );
+
+            setWorkspaceLoadError(
+              error.message ||
+                "The workspace was created, but its data could not be loaded."
+            );
+
+            setWorkspacePage(
+              null
+            );
+
+            setShowWorkspaceSetup(
+              false
+            );
+
+            setWorkspaceLoading(
+              false
             );
           }
-
-          handleClearFilters();
-
-          finishWorkspaceFlow();
         }}
       />
     );
@@ -2849,104 +3548,146 @@ function App() {
         onWorkspaceJoined={async (
           workspace
         ) => {
-          if (!workspace) {
-            console.error(
-              "Workspace join succeeded without workspace data."
+          try {
+            if (!workspace) {
+              throw new Error(
+                "Workspace join succeeded without workspace data."
+              );
+            }
+
+            const joinedWorkspaceId =
+              workspace?.id ||
+              workspace?._id ||
+              "";
+
+            if (!joinedWorkspaceId) {
+              throw new Error(
+                "The joined workspace did not contain a valid workspace ID."
+              );
+            }
+
+            const joinedWorkspaceName =
+              workspace?.name?.trim() ||
+              "CollabBoard";
+
+            const joinedWorkspaceDescription =
+              workspace?.description ||
+              "";
+
+            const joinedWorkspaceCode =
+              String(
+                workspace?.joinCode ||
+                  workspace?.inviteCode ||
+                  ""
+              )
+                .trim()
+                .toUpperCase();
+
+            const joinedWorkspaceRole =
+              workspace?.role ===
+              "leader"
+                ? "leader"
+                : "member";
+
+            setWorkspaceLoading(
+              true
             );
-            return;
-          }
 
-          const joinedWorkspaceId =
-            workspace?.id ||
-            workspace?._id ||
-            "";
+            setWorkspaceLoadError(
+              null
+            );
 
-          const joinedWorkspaceName =
-            workspace?.name?.trim() ||
-            "CollabBoard";
+            setWorkspaceType(
+              "existing"
+            );
 
-          const joinedWorkspaceDescription =
-            workspace?.description ||
-            "";
+            setWorkspaceName(
+              joinedWorkspaceName
+            );
 
-          const joinedWorkspaceCode =
-            String(
-              workspace?.joinCode ||
-                workspace?.inviteCode ||
-                ""
-            )
-              .trim()
-              .toUpperCase();
+            setWorkspaceDescription(
+              joinedWorkspaceDescription
+            );
 
-          setWorkspaceType(
-            "existing"
-          );
+            setCurrentWorkspaceRole(
+              joinedWorkspaceRole
+            );
 
-          setWorkspaceName(
-            joinedWorkspaceName
-          );
+            setTeamMembers(
+              []
+            );
 
-          setWorkspaceDescription(
-            joinedWorkspaceDescription
-          );
+            setTasks(
+              []
+            );
 
-          setTasks([]);
+            setWorkspaceId(
+              String(
+                joinedWorkspaceId
+              )
+            );
 
-          // ---------------------------------------------------
-          // STORE THE REAL WORKSPACE ID
-          // ---------------------------------------------------
-
-          setWorkspaceId(
-            String(joinedWorkspaceId)
-          );
-
-          if (joinedWorkspaceId) {
             localStorage.setItem(
               "collabboardWorkspaceId",
-              String(joinedWorkspaceId)
+              String(
+                joinedWorkspaceId
+              )
             );
-          }
 
-          // ---------------------------------------------------
-          // STORE REAL WORKSPACE DETAILS
-          // ---------------------------------------------------
-
-          if (joinedWorkspaceCode) {
             localStorage.setItem(
-              "collabboardWorkspaceCode",
+              "collabboardWorkspaceName",
+              joinedWorkspaceName
+            );
+
+            localStorage.setItem(
+              "collabboardWorkspaceDescription",
+              joinedWorkspaceDescription
+            );
+
+            if (
               joinedWorkspaceCode
-            );
-          }
-
-          localStorage.setItem(
-            "collabboardWorkspaceName",
-            joinedWorkspaceName
-          );
-
-          localStorage.setItem(
-            "collabboardWorkspaceDescription",
-            joinedWorkspaceDescription
-          );
-
-          // ---------------------------------------------------
-          // LOAD REAL MEMBERS FROM MONGODB
-          // ---------------------------------------------------
-
-          if (joinedWorkspaceId) {
-            const joinedMembers =
-              await loadWorkspaceMembers(
-                String(joinedWorkspaceId)
+            ) {
+              localStorage.setItem(
+                "collabboardWorkspaceCode",
+                joinedWorkspaceCode
               );
+            } else {
+              localStorage.removeItem(
+                "collabboardWorkspaceCode"
+              );
+            }
 
-            await loadWorkspaceTasks(
-              String(joinedWorkspaceId),
-              joinedMembers
+            await loadWorkspaceData(
+              String(
+                joinedWorkspaceId
+              )
+            );
+
+            handleClearFilters();
+            finishWorkspaceFlow();
+          } catch (error) {
+            console.error(
+              "Join workspace frontend flow error:",
+              error
+            );
+
+            setWorkspaceLoadError(
+              error.message ||
+                "The workspace was joined, but its data could not be loaded."
+            );
+
+            setWorkspacePage(
+              null
+            );
+
+            setShowWorkspaceSetup(
+              false
+            );
+
+            setWorkspaceLoading(
+              false
             );
           }
-
-          handleClearFilters();
-
-          finishWorkspaceFlow();
         }}
       />
     );
@@ -2964,30 +3705,19 @@ function App() {
           : ""
       }`}
     >
-
-      {/* =====================================================
-          SIDEBAR
-      ===================================================== */}
-
       <aside className="sidebar">
-
         <div className="sidebar-top">
-
           <div className="sidebar-logo">
-
             <div className="sidebar-logo-icon">
-
               <BriefcaseBusiness
                 size={30}
                 strokeWidth={3.0}
               />
-
             </div>
 
             <span>
               CollabBoard
             </span>
-
           </div>
 
           <button
@@ -3015,13 +3745,9 @@ function App() {
               strokeWidth={1.8}
             />
           </button>
-
         </div>
 
         <nav className="sidebar-nav">
-
-          {/* HOME */}
-
           <button
             type="button"
             className={`nav-item ${
@@ -3031,29 +3757,24 @@ function App() {
                 : ""
             }`}
             onClick={() => {
-
               setWorkspacePage(null);
-
               setShowWorkspaceSetup(
                 false
               );
-
               setWorkspaceFlowOrigin(
                 null
               );
-
               setActiveSection(
                 "home"
               );
 
               window.scrollTo({
                 top: 0,
-                behavior: "smooth",
+                behavior:
+                  "smooth",
               });
-
             }}
           >
-
             <span>
               <HomeIcon
                 size={18}
@@ -3063,10 +3784,7 @@ function App() {
             <label>
               Home
             </label>
-
           </button>
-
-          {/* PROFILE */}
 
           <button
             type="button"
@@ -3077,24 +3795,18 @@ function App() {
                 : ""
             }`}
             onClick={() => {
-
               setWorkspacePage(null);
-
               setShowWorkspaceSetup(
                 false
               );
-
               setWorkspaceFlowOrigin(
                 null
               );
-
               setActiveSection(
                 "profile"
               );
-
             }}
           >
-
             <span>
               ♙
             </span>
@@ -3102,10 +3814,7 @@ function App() {
             <label>
               Profile
             </label>
-
           </button>
-
-          {/* DASHBOARD */}
 
           <button
             type="button"
@@ -3116,24 +3825,18 @@ function App() {
                 : ""
             }`}
             onClick={() => {
-
               setWorkspacePage(null);
-
               setShowWorkspaceSetup(
                 false
               );
-
               setWorkspaceFlowOrigin(
                 null
               );
-
               setActiveSection(
                 "dashboard"
               );
-
             }}
           >
-
             <span>
               ▣
             </span>
@@ -3141,10 +3844,7 @@ function App() {
             <label>
               Dashboard
             </label>
-
           </button>
-
-          {/* BOARD */}
 
           <button
             type="button"
@@ -3155,24 +3855,18 @@ function App() {
                 : ""
             }`}
             onClick={() => {
-
               setWorkspacePage(null);
-
               setShowWorkspaceSetup(
                 false
               );
-
               setWorkspaceFlowOrigin(
                 null
               );
-
               setActiveSection(
                 "board"
               );
-
             }}
           >
-
             <span>
               ▦
             </span>
@@ -3180,10 +3874,7 @@ function App() {
             <label>
               Board
             </label>
-
           </button>
-
-          {/* TEAM */}
 
           <button
             type="button"
@@ -3194,24 +3885,18 @@ function App() {
                 : ""
             }`}
             onClick={() => {
-
               setWorkspacePage(null);
-
               setShowWorkspaceSetup(
                 false
               );
-
               setWorkspaceFlowOrigin(
                 null
               );
-
               setActiveSection(
                 "team"
               );
-
             }}
           >
-
             <span>
               ♟
             </span>
@@ -3219,10 +3904,7 @@ function App() {
             <label>
               Team
             </label>
-
           </button>
-
-          {/* REPORTS */}
 
           <button
             type="button"
@@ -3233,35 +3915,28 @@ function App() {
                 : ""
             }`}
             onClick={() => {
-
               setWorkspacePage(null);
-
               setShowWorkspaceSetup(
                 false
               );
-
               setWorkspaceFlowOrigin(
                 null
               );
-
               setActiveSection(
                 "reports"
               );
-
             }}
           >
-
             <span>
-             <BarChart3 size={18} />
+              <BarChart3
+                size={18}
+              />
             </span>
 
             <label>
               Reports
             </label>
-
           </button>
-
-          {/* SETTINGS */}
 
           <button
             type="button"
@@ -3272,24 +3947,18 @@ function App() {
                 : ""
             }`}
             onClick={() => {
-
               setWorkspacePage(null);
-
               setShowWorkspaceSetup(
                 false
               );
-
               setWorkspaceFlowOrigin(
                 null
               );
-
               setActiveSection(
                 "settings"
               );
-
             }}
           >
-
             <span>
               <SettingsIcon
                 size={18}
@@ -3299,24 +3968,15 @@ function App() {
             <label>
               Settings
             </label>
-
           </button>
-
         </nav>
 
-        {/* LOGOUT */}
-
         <div className="sidebar-bottom">
-
           <button
             type="button"
             className="nav-item logout-nav"
             onClick={() => {
-
-              setAuthUser(
-                null
-              );
-
+              setAuthUser(null);
               setIsLoggedIn(
                 false
               );
@@ -3324,33 +3984,39 @@ function App() {
               localStorage.removeItem(
                 "collabboardToken"
               );
-
               localStorage.removeItem(
                 "collabboardUser"
               );
-
               localStorage.removeItem(
                 "collabboardRememberMe"
               );
-
               localStorage.removeItem(
                 "collabboardWorkspaceId"
               );
-
               localStorage.removeItem(
                 "collabboardWorkspaceCode"
               );
-
               localStorage.removeItem(
                 "collabboardWorkspaceName"
               );
-
               localStorage.removeItem(
                 "collabboardWorkspaceDescription"
               );
 
               setWorkspaceId(
                 ""
+              );
+
+              setCurrentWorkspaceRole(
+                null
+              );
+
+              setWorkspaceLoading(
+                false
+              );
+
+              setWorkspaceLoadError(
+                null
               );
 
               setCurrentPage(
@@ -3386,16 +4052,11 @@ function App() {
               );
 
               setTasks([]);
-
-              setTeamMembers(
-                resetTeamMembers()
-              );
+              setTeamMembers([]);
 
               handleClearFilters();
-
             }}
           >
-
             <span>
               ↪
             </span>
@@ -3403,22 +4064,13 @@ function App() {
             <label>
               Logout
             </label>
-
           </button>
-
         </div>
-
       </aside>
-
-      {/* =====================================================
-          MAIN CONTENT
-      ===================================================== */}
 
       {activeSection ===
       "home" ? (
-
         <main className="dashboard-main home-main">
-
           <Home
             onLogin={() =>
               setActiveSection(
@@ -3438,327 +4090,313 @@ function App() {
               openJoinWorkspace
             }
           />
-
         </main>
-
       ) : activeSection ===
         "profile" ? (
-
         <main className="dashboard-main">
-
           <Profile
             currentUser={
               currentUser
             }
-
             workspaceName={
               workspaceName
             }
-
             onUpdateProfile={
               handleUpdateMember
             }
           />
-
         </main>
-
       ) : activeSection ===
         "team" ? (
-
         <main className="dashboard-main">
-
           <Team
             workspaceName={
               workspaceName
             }
-
+            workspaceCode={
+              localStorage.getItem(
+                "collabboardWorkspaceCode"
+              ) || ""
+            }
             members={
               teamMembers
             }
-
             currentUser={
               currentUser
             }
-
             onAddMember={
               handleAddMember
             }
-
             onUpdateMember={
               handleUpdateMember
             }
-
             onDeleteMember={
               handleDeleteMember
             }
           />
-
         </main>
-
       ) : activeSection ===
         "board" ? (
-
         <main className="dashboard-main board-main">
-
           <Board
             workspaceName={
               workspaceName
             }
-
             setWorkspaceName={
               handleWorkspaceNameChange
             }
-
             members={
-              teamMembers
+              taskAssignableMembers
             }
-
             tasks={
               tasks
             }
-
             todoTasks={
               todoTasks
             }
-
             doingTasks={
               doingTasks
             }
-
             reviewTasks={
               reviewTasks
             }
-
             doneTasks={
               doneTasks
             }
-
             searchTerm={
               searchTerm
             }
-
             setSearchTerm={
               setSearchTerm
             }
-
             statusFilter={
               statusFilter
             }
-
             setStatusFilter={
               setStatusFilter
             }
-
             memberFilter={
               memberFilter
             }
-
             setMemberFilter={
               setMemberFilter
             }
-
             priorityFilter={
               priorityFilter
             }
-
             setPriorityFilter={
               setPriorityFilter
             }
-
             dueDateFilter={
               dueDateFilter
             }
-
             setDueDateFilter={
               setDueDateFilter
             }
-
             sortBy={
               sortBy
             }
-
             setSortBy={
               setSortBy
             }
-
             toggleFilter={
               toggleFilter
             }
-
             handleClearFilters={
               handleClearFilters
             }
-
             handleAddTask={
               handleAddTask
             }
-
             handleMoveTask={
               handleMoveTask
             }
-
             handleDeleteTask={
               handleDeleteTask
             }
-
             handleEditTask={
               handleEditTask
             }
-
             handleReorderTask={
               handleReorderTask
             }
           />
-
         </main>
-
       ) : activeSection ===
         "reports" ? (
-
         <main className="dashboard-main reports-main">
-
           <Reports
             tasks={
               tasks
             }
-
             members={
               teamMembers
             }
           />
-
         </main>
-
       ) : activeSection ===
         "settings" ? (
-
         <main className="dashboard-main">
-
           <SettingsPage
-  onDeleteAccount={async () => {
-    const token = localStorage.getItem(
-      "collabboardToken"
-    );
+            onDeleteAccount={async () => {
+              const token =
+                localStorage.getItem(
+                  "collabboardToken"
+                );
 
-    if (!token) {
-      throw new Error(
-        "Your login session has expired. Please log in again."
-      );
-    }
+              if (!token) {
+                throw new Error(
+                  "Your login session has expired. Please log in again."
+                );
+              }
 
-    try {
-      const response = await fetch(
-        "http://localhost:5000/api/auth/account",
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+              try {
+                const response =
+                  await fetch(
+                    "http://localhost:5000/api/auth/account",
+                    {
+                      method:
+                        "DELETE",
+                      headers: {
+                        Authorization:
+                          `Bearer ${token}`,
+                      },
+                    }
+                  );
 
-      let data;
+                let data;
 
-      try {
-        data = await response.json();
-      } catch (error) {
-        throw new Error(
-          "The server returned an invalid account deletion response."
-        );
-      }
+                try {
+                  data =
+                    await response.json();
+                } catch (error) {
+                  throw new Error(
+                    "The server returned an invalid account deletion response."
+                  );
+                }
 
-      if (!response.ok || !data.success) {
-        throw new Error(
-          data.message ||
-            "Unable to delete your account."
-        );
-      }
+                if (
+                  !response.ok ||
+                  !data.success
+                ) {
+                  throw new Error(
+                    data.message ||
+                      "Unable to delete your account."
+                  );
+                }
 
-      // -------------------------------------------------------
-      // BACKEND DELETION SUCCEEDED
-      // -------------------------------------------------------
-      // Only clear the local session after the backend confirms
-      // that the account was successfully deleted.
-      // -------------------------------------------------------
+                setAuthUser(
+                  null
+                );
 
-      setAuthUser(null);
-      setIsLoggedIn(false);
-      setCurrentPage("home");
-      setWorkspacePage(null);
-      setShowWorkspaceSetup(false);
-      setWorkspaceFlowOrigin(null);
-      setActiveSection("dashboard");
-      setWorkspaceType("existing");
-      setWorkspaceName("CollabBoard");
-      setWorkspaceDescription("");
-      setTasks([]);
-      setTeamMembers([]);
-      handleClearFilters();
+                setIsLoggedIn(
+                  false
+                );
 
-      localStorage.removeItem(
-        "collabboardToken"
-      );
+                setCurrentPage(
+                  "home"
+                );
 
-      localStorage.removeItem(
-        "collabboardUser"
-      );
+                setWorkspacePage(
+                  null
+                );
 
-      localStorage.removeItem(
-        "collabboardRememberMe"
-      );
+                setShowWorkspaceSetup(
+                  false
+                );
 
-      localStorage.removeItem(
-        "collabboardWorkspaceId"
-      );
+                setWorkspaceFlowOrigin(
+                  null
+                );
 
-      localStorage.removeItem(
-        "collabboardWorkspaceName"
-      );
+                setActiveSection(
+                  "dashboard"
+                );
 
-      localStorage.removeItem(
-        "collabboardWorkspaceDescription"
-      );
+                setWorkspaceType(
+                  "existing"
+                );
 
-      localStorage.removeItem(
-        "collabboardWorkspaceCode"
-      );
-    } catch (error) {
-      console.error(
-        "Delete account error:",
-        error
-      );
+                setWorkspaceName(
+                  "CollabBoard"
+                );
 
-      throw error;
-    }
-  }}
-/>
+                setWorkspaceDescription(
+                  ""
+                );
 
+                setCurrentWorkspaceRole(
+                  null
+                );
+
+                setWorkspaceLoading(
+                  false
+                );
+
+                setWorkspaceLoadError(
+                  null
+                );
+
+                setTasks([]);
+                setTeamMembers([]);
+
+                handleClearFilters();
+
+                localStorage.removeItem(
+                  "collabboardToken"
+                );
+
+                localStorage.removeItem(
+                  "collabboardUser"
+                );
+
+                localStorage.removeItem(
+                  "collabboardRememberMe"
+                );
+
+                localStorage.removeItem(
+                  "collabboardWorkspaceId"
+                );
+
+                localStorage.removeItem(
+                  "collabboardWorkspaceName"
+                );
+
+                localStorage.removeItem(
+                  "collabboardWorkspaceDescription"
+                );
+
+                localStorage.removeItem(
+                  "collabboardWorkspaceCode"
+                );
+              } catch (error) {
+                console.error(
+                  "Delete account error:",
+                  error
+                );
+
+                throw error;
+              }
+            }}
+          />
         </main>
-
       ) : (
-
         <main className="dashboard-main">
-
           <DashboardPage
             tasks={
               tasks
             }
-
             members={
               teamMembers
             }
-
             onOpenBoard={() =>
               setActiveSection(
                 "board"
               )
             }
           />
-
         </main>
-
       )}
-
     </div>
   );
 }
