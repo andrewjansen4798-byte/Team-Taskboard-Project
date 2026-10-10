@@ -1,342 +1,296 @@
-
-import React, {
-  useEffect,
-  useState,
-} from "react";
-
+import { useEffect, useState } from "react";
 import "./Profile.css";
 
+// =========================================================
+// BUILD PROFILE FROM SHARED CURRENT USER
+// =========================================================
+function buildProfile(member, workspaceName = "CollabBoard") {
+  const normalizedMembershipStatus = String(
+    member?.membershipStatus ||
+      member?.status ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+
+  return {
+    name: member?.name || "Team Member",
+    role:
+      member?.workspaceRole ||
+      member?.role ||
+      "Member",
+    email: member?.email || "",
+    phone: member?.phone || "",
+    location: member?.location || "",
+    timeZone:
+      member?.timeZone ||
+      member?.timezone ||
+      "",
+    age: member?.age ?? "",
+    gender: member?.gender || "",
+    projectRole: member?.projectRole || "",
+    currentJob: member?.currentJob || "",
+    bio: member?.bio || "",
+    workspace: workspaceName || "CollabBoard",
+    memberSince: member?.joined || "Recently",
+    accountStatus:
+      member?.accountStatus ||
+      (member?.userId ? "Active" : "Non-Active"),
+    membershipStatus:
+      normalizedMembershipStatus === "inactive"
+        ? "Inactive"
+        : normalizedMembershipStatus === "active"
+          ? "Active"
+          : member?.membershipStatus || "Active",
+    userId:
+      member?.userId ||
+      member?.id ||
+      member?._id ||
+      null,
+    membershipId: member?.membershipId || null,
+  };
+}
+
+// =========================================================
+// PROFILE COMPONENT
+// =========================================================
 function Profile({
   currentUser = null,
   workspaceName = "CollabBoard",
   onUpdateProfile,
 }) {
   // =========================================================
-  // BUILD PROFILE FROM SHARED CURRENT USER
-  // =========================================================
-
-  function buildProfile(member) {
-    return {
-      name:
-        member?.name ||
-        "Team Member",
-
-      role:
-        member?.role ||
-        "Member",
-
-      email:
-        member?.email ||
-        "",
-
-      phone:
-        member?.phone ||
-        "+94 77 123 4567",
-
-      location:
-        member?.location ||
-        "Sri Lanka",
-
-      timezone:
-        member?.timezone ||
-        "GMT +5:30",
-
-      age:
-        member?.age ||
-        "",
-
-      gender:
-        member?.gender ||
-        "",
-
-      projectRole:
-        member?.projectRole ||
-        "",
-
-      currentJob:
-        member?.currentJob ||
-        "",
-
-      bio:
-        member?.bio ||
-        "",
-
-      workspace:
-        workspaceName ||
-        "CollabBoard",
-
-      memberSince:
-        member?.joined ||
-        "Recently",
-    };
-  }
-
-  // =========================================================
   // PROFILE DATA
   // =========================================================
-
-  const [profile, setProfile] =
-    useState(
-      () =>
-        buildProfile(
-          currentUser
-        )
-    );
+  const [profile, setProfile] = useState(
+    () => buildProfile(currentUser, workspaceName)
+  );
 
   // =========================================================
-  // STATES
+  // UI STATE
   // =========================================================
+  const [profileImage, setProfileImage] = useState(null);
+  const [personalOpen, setPersonalOpen] = useState(true);
+  const [contactOpen, setContactOpen] = useState(true);
+  const [activeMenu, setActiveMenu] = useState(null);
+  const [editingSection, setEditingSection] = useState(null);
 
-  const [profileImage, setProfileImage] =
-    useState(null);
-
-  const [personalOpen, setPersonalOpen] =
-    useState(true);
-
-  const [contactOpen, setContactOpen] =
-    useState(true);
-
-  const [activeMenu, setActiveMenu] =
-    useState(null);
-
-  const [editingSection, setEditingSection] =
-    useState(null);
-
-  const [editData, setEditData] =
-    useState(
-      () =>
-        buildProfile(
-          currentUser
-        )
-    );
+  // =========================================================
+  // EDIT DATA
+  // =========================================================
+  const [editData, setEditData] = useState(() => ({
+    ...buildProfile(currentUser, workspaceName),
+    currentPassword: "",
+  }));
 
   // =========================================================
   // SYNC WITH APP.JSX
   // =========================================================
   //
-  // When Team.jsx updates the current user, App.jsx updates
-  // currentUser and passes the new object here.
+  // Synchronize profile data when the current user or workspace
+  // changes. Schedule the state updates so they don't occur
+  // synchronously inside the effect body. Clean up the pending
+  // callback if the component unmounts or its inputs change.
   //
-  // This keeps Profile synchronized with Team.
-
+  // =========================================================
   useEffect(() => {
-    const updatedProfile =
-      buildProfile(
-        currentUser
-      );
-
-    setProfile(
-      updatedProfile
+    const updatedProfile = buildProfile(
+      currentUser,
+      workspaceName
     );
 
-    setEditData(
-      updatedProfile
-    );
-  }, [
-    currentUser,
-    workspaceName,
-  ]);
+    const timeoutId = window.setTimeout(() => {
+      setProfile(updatedProfile);
+      setEditData({
+        ...updatedProfile,
+        currentPassword: "",
+      });
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [currentUser, workspaceName]);
 
   // =========================================================
   // PROFILE IMAGE
   // =========================================================
-
   function handleProfileImageChange(e) {
-    const file =
-      e.target.files?.[0];
+    const file = e.target.files?.[0];
 
     if (!file) {
       return;
     }
 
-    const imageURL =
-      URL.createObjectURL(
-        file
-      );
-
-    setProfileImage(
-      imageURL
-    );
+    const imageURL = URL.createObjectURL(file);
+    setProfileImage(imageURL);
   }
 
   // =========================================================
-  // EDIT
+  // START EDITING
   // =========================================================
-
   function startEditing(section) {
-    setEditData(
-      profile
-    );
+    setEditData({
+      ...profile,
+      currentPassword: "",
+    });
 
-    setEditingSection(
-      section
-    );
-
-    setActiveMenu(
-      null
-    );
+    setEditingSection(section);
+    setActiveMenu(null);
   }
 
   // =========================================================
   // INPUT CHANGE
   // =========================================================
-
   function handleEditChange(e) {
-    const {
-      name,
-      value,
-    } = e.target;
+    const { name, value } = e.target;
 
-    setEditData(
-      (current) => ({
-        ...current,
-        [name]: value,
-      })
-    );
+    setEditData((current) => ({
+      ...current,
+      [name]: value,
+    }));
   }
 
   // =========================================================
   // SAVE CHANGES
   // =========================================================
-
   function saveChanges() {
     const nextProfile = {
       ...profile,
       ...editData,
     };
 
-    // -------------------------------------------------------
-    // SHARED MEMBER DATA
-    // -------------------------------------------------------
-    //
-    // These fields belong to the shared Team member object.
-    // App.jsx will update teamMembers and task assignees when
-    // the name changes.
-
     if (
-      typeof onUpdateProfile ===
-      "function" &&
+      typeof onUpdateProfile === "function" &&
       currentUser
     ) {
       const updatedMember = {
         ...currentUser,
-
-        name:
-          editData.name.trim(),
-
-        age:
-          editData.age,
-
-        gender:
-          editData.gender,
-
-        projectRole:
-          editData.projectRole.trim(),
-
-        currentJob:
-          editData.currentJob.trim(),
-
-        email:
-          editData.email.trim(),
-
-        bio:
-          editData.bio.trim(),
+        name: editData.name.trim(),
+        age: editData.age,
+        gender: editData.gender,
+        projectRole: editData.projectRole.trim(),
+        currentJob: editData.currentJob.trim(),
+        email: editData.email
+          .trim()
+          .toLowerCase(),
+        bio: editData.bio.trim(),
+        phone: editData.phone.trim(),
+        location: editData.location.trim(),
+        timeZone: editData.timeZone.trim(),
+        currentPassword:
+          editData.currentPassword || "",
       };
 
-      onUpdateProfile(
-        updatedMember
-      );
+      onUpdateProfile(updatedMember);
     }
 
-    // -------------------------------------------------------
-    // LOCAL PROFILE DISPLAY
-    // -------------------------------------------------------
-    //
-    // Phone, location and timezone are currently local profile
-    // fields because they do not exist in the shared member
-    // model in App.jsx.
+    setProfile(nextProfile);
 
-    setProfile(
-      nextProfile
-    );
+    setEditData({
+      ...nextProfile,
+      currentPassword: "",
+    });
 
-    setEditingSection(
-      null
-    );
-
-    setActiveMenu(
-      null
-    );
+    setEditingSection(null);
+    setActiveMenu(null);
   }
 
   // =========================================================
   // CANCEL EDITING
   // =========================================================
-
   function cancelEditing() {
-    setEditData(
-      profile
-    );
+    setEditData({
+      ...profile,
+      currentPassword: "",
+    });
 
-    setEditingSection(
-      null
-    );
-
-    setActiveMenu(
-      null
-    );
+    setEditingSection(null);
+    setActiveMenu(null);
   }
 
   // =========================================================
   // MENU
   // =========================================================
-
   function toggleMenu(section) {
-    setActiveMenu(
-      (current) =>
-        current ===
-        section
-          ? null
-          : section
+    setActiveMenu((current) =>
+      current === section ? null : section
     );
   }
 
   // =========================================================
   // INITIALS
   // =========================================================
-
   function getInitials(name) {
     if (!name) {
       return "TM";
     }
 
     return name
-      .split(" ")
+      .split(/\s+/)
       .filter(Boolean)
-      .map(
-        (word) =>
-          word[0]
-      )
+      .map((word) => word[0])
       .join("")
       .slice(0, 2)
       .toUpperCase();
   }
 
   // =========================================================
+  // STATUS HELPERS
+  // =========================================================
+  function getProfilePresence() {
+    return profile.userId
+      ? "Online Member"
+      : "Offline Member";
+  }
+
+  function getProfileAccountStatus() {
+    const normalized = String(
+      profile.accountStatus || ""
+    )
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+
+    if (
+      normalized === "non-active" ||
+      normalized === "nonactive"
+    ) {
+      return "Non-Active";
+    }
+
+    return "Active";
+  }
+
+  function getProfileMembershipStatus() {
+    const normalized = String(
+      profile.membershipStatus || ""
+    )
+      .trim()
+      .toLowerCase();
+
+    return normalized === "inactive"
+      ? "Inactive"
+      : "Active";
+  }
+
+  // =========================================================
+  // DISPLAY VALUE
+  // =========================================================
+  function displayValue(value) {
+    return value || "Not provided";
+  }
+
+  // =========================================================
   // RENDER
   // =========================================================
-
   return (
     <div className="profile-page">
-
       {/* =====================================================
           HEADER
       ===================================================== */}
-
       <div className="profile-page-header">
-
         <div>
-
           <p className="profile-page-label">
             ACCOUNT
           </p>
@@ -349,21 +303,15 @@ function Profile({
             Manage your personal information
             and workspace identity.
           </p>
-
         </div>
-
       </div>
 
       {/* =====================================================
           PROFILE HEADER CARD
       ===================================================== */}
-
       <div className="profile-hero-card">
-
         <div className="profile-avatar-section">
-
           <div className="profile-avatar-wrapper">
-
             {profileImage ? (
               <img
                 src={profileImage}
@@ -372,9 +320,7 @@ function Profile({
               />
             ) : (
               <div className="profile-avatar">
-                {getInitials(
-                  profile.name
-                )}
+                {getInitials(profile.name)}
               </div>
             )}
 
@@ -387,19 +333,14 @@ function Profile({
               <input
                 type="file"
                 accept="image/*"
-                onChange={
-                  handleProfileImageChange
-                }
+                onChange={handleProfileImageChange}
                 hidden
               />
             </label>
-
           </div>
-
         </div>
 
         <div className="profile-hero-info">
-
           <h2>
             {profile.name}
           </h2>
@@ -409,28 +350,22 @@ function Profile({
           </span>
 
           <p>
-            {profile.email}
+            {displayValue(profile.email)}
           </p>
 
           <p className="profile-member-since">
             Member since{" "}
             {profile.memberSince}
           </p>
-
         </div>
-
       </div>
-
-      {/* =====================================================
+            {/* =====================================================
           INFORMATION GRID
       ===================================================== */}
-
       <div className="profile-information-grid">
-
         {/* ===================================================
             PERSONAL INFORMATION
         =================================================== */}
-
         <section
           className={`profile-information-card ${
             !personalOpen
@@ -438,11 +373,8 @@ function Profile({
               : ""
           }`}
         >
-
           <div className="profile-card-header">
-
             <div className="profile-card-title">
-
               <div className="profile-card-icon personal">
                 👤
               </div>
@@ -456,83 +388,56 @@ function Profile({
                   Your personal details
                 </p>
               </div>
-
             </div>
 
             <div className="profile-card-actions">
-
-              {/* COLLAPSE / EXPAND */}
-
               <button
                 type="button"
                 className="profile-collapse-button"
                 onClick={() =>
-                  setPersonalOpen(
-                    (current) =>
-                      !current
-                  )
+                  setPersonalOpen((current) => !current)
                 }
               >
-                {personalOpen
-                  ? "Collapse"
-                  : "Expand"}
+                {personalOpen ? "Collapse" : "Expand"}
               </button>
 
-              {/* THREE DOTS */}
-
               <div className="profile-menu-wrapper">
-
                 <button
                   type="button"
                   className="profile-menu-button"
                   onClick={() =>
-                    toggleMenu(
-                      "personal"
-                    )
+                    toggleMenu("personal")
                   }
+                  aria-label="Personal information menu"
                 >
                   ⋮
                 </button>
 
-                {activeMenu ===
-                  "personal" && (
+                {activeMenu === "personal" && (
                   <div className="profile-dropdown-menu">
-
                     <button
                       type="button"
                       onClick={() =>
-                        startEditing(
-                          "personal"
-                        )
+                        startEditing("personal")
                       }
                     >
                       <span>
                         🖋
                       </span>
-
                       Edit
                     </button>
-
                   </div>
                 )}
-
               </div>
-
             </div>
-
           </div>
 
           {personalOpen && (
             <div className="profile-card-content">
-
-              {editingSection ===
-              "personal" ? (
+              {editingSection === "personal" ? (
                 <>
-
                   <div className="profile-edit-grid">
-
                     <div className="profile-field">
-
                       <label>
                         Full Name
                       </label>
@@ -540,56 +445,59 @@ function Profile({
                       <input
                         type="text"
                         name="name"
-                        value={
-                          editData.name
-                        }
-                        onChange={
-                          handleEditChange
-                        }
+                        value={editData.name}
+                        onChange={handleEditChange}
                       />
-
                     </div>
 
                     <div className="profile-field">
-
                       <label>
                         Age
                       </label>
 
                       <input
-                        type="text"
+                        type="number"
+                        min="1"
+                        max="120"
                         name="age"
-                        value={
-                          editData.age
-                        }
-                        onChange={
-                          handleEditChange
-                        }
+                        value={editData.age}
+                        onChange={handleEditChange}
                       />
-
                     </div>
 
                     <div className="profile-field">
-
                       <label>
                         Gender
                       </label>
 
-                      <input
-                        type="text"
+                      <select
                         name="gender"
-                        value={
-                          editData.gender
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                      />
+                        value={editData.gender}
+                        onChange={handleEditChange}
+                      >
+                        <option value="">
+                          Select gender
+                        </option>
 
+                        <option value="Male">
+                          Male
+                        </option>
+
+                        <option value="Female">
+                          Female
+                        </option>
+
+                        <option value="Other">
+                          Other
+                        </option>
+
+                        <option value="Prefer not to say">
+                          Prefer not to say
+                        </option>
+                      </select>
                     </div>
 
                     <div className="profile-field">
-
                       <label>
                         Project Role
                       </label>
@@ -597,18 +505,12 @@ function Profile({
                       <input
                         type="text"
                         name="projectRole"
-                        value={
-                          editData.projectRole
-                        }
-                        onChange={
-                          handleEditChange
-                        }
+                        value={editData.projectRole}
+                        onChange={handleEditChange}
                       />
-
                     </div>
 
                     <div className="profile-field profile-field-full">
-
                       <label>
                         Current Job
                       </label>
@@ -616,26 +518,17 @@ function Profile({
                       <input
                         type="text"
                         name="currentJob"
-                        value={
-                          editData.currentJob
-                        }
-                        onChange={
-                          handleEditChange
-                        }
+                        value={editData.currentJob}
+                        onChange={handleEditChange}
                       />
-
                     </div>
-
                   </div>
 
                   <div className="profile-edit-actions">
-
                     <button
                       type="button"
                       className="profile-cancel-button"
-                      onClick={
-                        cancelEditing
-                      }
+                      onClick={cancelEditing}
                     >
                       Cancel
                     </button>
@@ -643,26 +536,21 @@ function Profile({
                     <button
                       type="button"
                       className="profile-save-button"
-                      onClick={
-                        saveChanges
-                      }
+                      onClick={saveChanges}
                     >
                       Save Changes
                     </button>
-
                   </div>
-
                 </>
               ) : (
                 <div className="profile-details-grid">
-
                   <div>
                     <span>
                       Full Name
                     </span>
 
                     <strong>
-                      {profile.name}
+                      {displayValue(profile.name)}
                     </strong>
                   </div>
 
@@ -672,7 +560,7 @@ function Profile({
                     </span>
 
                     <strong>
-                      {profile.age}
+                      {displayValue(profile.age)}
                     </strong>
                   </div>
 
@@ -682,7 +570,7 @@ function Profile({
                     </span>
 
                     <strong>
-                      {profile.gender}
+                      {displayValue(profile.gender)}
                     </strong>
                   </div>
 
@@ -692,7 +580,7 @@ function Profile({
                     </span>
 
                     <strong>
-                      {profile.projectRole}
+                      {displayValue(profile.projectRole)}
                     </strong>
                   </div>
 
@@ -702,22 +590,17 @@ function Profile({
                     </span>
 
                     <strong>
-                      {profile.currentJob}
+                      {displayValue(profile.currentJob)}
                     </strong>
                   </div>
-
                 </div>
               )}
-
             </div>
           )}
-
         </section>
-
-        {/* ===================================================
+                {/* ===================================================
             CONTACT INFORMATION
         =================================================== */}
-
         <section
           className={`profile-information-card ${
             !contactOpen
@@ -725,13 +608,10 @@ function Profile({
               : ""
           }`}
         >
-
           <div className="profile-card-header">
-
             <div className="profile-card-title">
-
               <div className="profile-card-icon contact">
-                ✉
+                ☎
               </div>
 
               <div>
@@ -743,83 +623,56 @@ function Profile({
                   Your contact details
                 </p>
               </div>
-
             </div>
 
             <div className="profile-card-actions">
-
-              {/* COLLAPSE / EXPAND */}
-
               <button
                 type="button"
                 className="profile-collapse-button"
                 onClick={() =>
-                  setContactOpen(
-                    (current) =>
-                      !current
-                  )
+                  setContactOpen((current) => !current)
                 }
               >
-                {contactOpen
-                  ? "Collapse"
-                  : "Expand"}
+                {contactOpen ? "Collapse" : "Expand"}
               </button>
 
-              {/* THREE DOTS */}
-
               <div className="profile-menu-wrapper">
-
                 <button
                   type="button"
                   className="profile-menu-button"
                   onClick={() =>
-                    toggleMenu(
-                      "contact"
-                    )
+                    toggleMenu("contact")
                   }
+                  aria-label="Contact information menu"
                 >
                   ⋮
                 </button>
 
-                {activeMenu ===
-                  "contact" && (
+                {activeMenu === "contact" && (
                   <div className="profile-dropdown-menu">
-
                     <button
                       type="button"
                       onClick={() =>
-                        startEditing(
-                          "contact"
-                        )
+                        startEditing("contact")
                       }
                     >
                       <span>
                         🖋
                       </span>
-
                       Edit
                     </button>
-
                   </div>
                 )}
-
               </div>
-
             </div>
-
           </div>
 
           {contactOpen && (
             <div className="profile-card-content">
-
-              {editingSection ===
-              "contact" ? (
+              {editingSection === "contact" ? (
                 <>
-
                   <div className="profile-edit-grid">
-
                     <div className="profile-field">
-
                       <label>
                         Email
                       </label>
@@ -827,18 +680,28 @@ function Profile({
                       <input
                         type="email"
                         name="email"
-                        value={
-                          editData.email
-                        }
-                        onChange={
-                          handleEditChange
-                        }
+                        value={editData.email}
+                        onChange={handleEditChange}
+                        autoComplete="email"
                       />
-
                     </div>
 
                     <div className="profile-field">
+                      <label>
+                        Current Password
+                      </label>
 
+                      <input
+                        type="password"
+                        name="currentPassword"
+                        value={editData.currentPassword || ""}
+                        onChange={handleEditChange}
+                        autoComplete="current-password"
+                        placeholder="Required only when changing email"
+                      />
+                    </div>
+
+                    <div className="profile-field">
                       <label>
                         Phone
                       </label>
@@ -846,18 +709,12 @@ function Profile({
                       <input
                         type="text"
                         name="phone"
-                        value={
-                          editData.phone
-                        }
-                        onChange={
-                          handleEditChange
-                        }
+                        value={editData.phone}
+                        onChange={handleEditChange}
                       />
-
                     </div>
 
                     <div className="profile-field">
-
                       <label>
                         Location
                       </label>
@@ -865,45 +722,31 @@ function Profile({
                       <input
                         type="text"
                         name="location"
-                        value={
-                          editData.location
-                        }
-                        onChange={
-                          handleEditChange
-                        }
+                        value={editData.location}
+                        onChange={handleEditChange}
                       />
-
                     </div>
 
                     <div className="profile-field">
-
                       <label>
                         Time Zone
                       </label>
 
                       <input
                         type="text"
-                        name="timezone"
-                        value={
-                          editData.timezone
-                        }
-                        onChange={
-                          handleEditChange
-                        }
+                        name="timeZone"
+                        value={editData.timeZone}
+                        onChange={handleEditChange}
+                        placeholder="e.g. Asia/Colombo"
                       />
-
                     </div>
-
                   </div>
 
                   <div className="profile-edit-actions">
-
                     <button
                       type="button"
                       className="profile-cancel-button"
-                      onClick={
-                        cancelEditing
-                      }
+                      onClick={cancelEditing}
                     >
                       Cancel
                     </button>
@@ -911,26 +754,21 @@ function Profile({
                     <button
                       type="button"
                       className="profile-save-button"
-                      onClick={
-                        saveChanges
-                      }
+                      onClick={saveChanges}
                     >
                       Save Changes
                     </button>
-
                   </div>
-
                 </>
               ) : (
                 <div className="profile-details-grid">
-
                   <div>
                     <span>
                       Email
                     </span>
 
                     <strong>
-                      {profile.email}
+                      {displayValue(profile.email)}
                     </strong>
                   </div>
 
@@ -940,7 +778,7 @@ function Profile({
                     </span>
 
                     <strong>
-                      {profile.phone}
+                      {displayValue(profile.phone)}
                     </strong>
                   </div>
 
@@ -950,7 +788,7 @@ function Profile({
                     </span>
 
                     <strong>
-                      {profile.location}
+                      {displayValue(profile.location)}
                     </strong>
                   </div>
 
@@ -960,28 +798,20 @@ function Profile({
                     </span>
 
                     <strong>
-                      {profile.timezone}
+                      {displayValue(profile.timeZone)}
                     </strong>
                   </div>
-
                 </div>
               )}
-
             </div>
           )}
-
         </section>
-
-        {/* ===================================================
+                {/* ===================================================
             ABOUT ME
         =================================================== */}
-
         <section className="profile-information-card profile-about-card">
-
           <div className="profile-card-header">
-
             <div className="profile-card-title">
-
               <div className="profile-card-icon about">
                 ✎
               </div>
@@ -995,86 +825,61 @@ function Profile({
                   A little about yourself
                 </p>
               </div>
-
             </div>
 
             <div className="profile-card-actions">
-
               <div className="profile-menu-wrapper">
-
                 <button
                   type="button"
                   className="profile-menu-button"
                   onClick={() =>
-                    toggleMenu(
-                      "about"
-                    )
+                    toggleMenu("about")
                   }
+                  aria-label="About menu"
                 >
                   ⋮
                 </button>
 
-                {activeMenu ===
-                  "about" && (
+                {activeMenu === "about" && (
                   <div className="profile-dropdown-menu">
-
                     <button
                       type="button"
                       onClick={() =>
-                        startEditing(
-                          "about"
-                        )
+                        startEditing("about")
                       }
                     >
                       <span>
                         🖋
                       </span>
-
                       Edit
                     </button>
-
                   </div>
                 )}
-
               </div>
-
             </div>
-
           </div>
 
           <div className="profile-card-content">
-
-            {editingSection ===
-            "about" ? (
+            {editingSection === "about" ? (
               <>
-
                 <div className="profile-field">
-
                   <label>
                     About Me
                   </label>
 
                   <textarea
                     name="bio"
-                    value={
-                      editData.bio
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editData.bio}
+                    onChange={handleEditChange}
                     rows="5"
                   />
-
                 </div>
 
                 <div className="profile-edit-actions">
-
                   <button
                     type="button"
                     className="profile-cancel-button"
-                    onClick={
-                      cancelEditing
-                    }
+                    onClick={cancelEditing}
                   >
                     Cancel
                   </button>
@@ -1082,37 +887,26 @@ function Profile({
                   <button
                     type="button"
                     className="profile-save-button"
-                    onClick={
-                      saveChanges
-                    }
+                    onClick={saveChanges}
                   >
                     Save Changes
                   </button>
-
                 </div>
-
               </>
             ) : (
               <p className="profile-about-text">
-                {profile.bio ||
-                  "No bio provided yet."}
+                {profile.bio || "No bio provided yet."}
               </p>
             )}
-
           </div>
-
         </section>
 
         {/* ===================================================
             WORKSPACE INFORMATION
         =================================================== */}
-
         <section className="profile-information-card profile-workspace-card">
-
           <div className="profile-card-header">
-
             <div className="profile-card-title">
-
               <div className="profile-card-icon workspace">
                 ▣
               </div>
@@ -1126,15 +920,11 @@ function Profile({
                   Your current workspace
                 </p>
               </div>
-
             </div>
-
           </div>
 
           <div className="profile-card-content">
-
             <div className="profile-details-grid">
-
               <div>
                 <span>
                   Workspace
@@ -1167,22 +957,37 @@ function Profile({
 
               <div>
                 <span>
-                  Workspace Status
+                  Account Status
                 </span>
 
                 <strong className="profile-status">
-                  Active
+                  {getProfilePresence()}
                 </strong>
               </div>
 
+              <div>
+                <span>
+                  Account
+                </span>
+
+                <strong className="profile-status">
+                  {getProfileAccountStatus()}
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Membership Status
+                </span>
+
+                <strong className="profile-status">
+                  {getProfileMembershipStatus()}
+                </strong>
+              </div>
             </div>
-
           </div>
-
         </section>
-
       </div>
-
     </div>
   );
 }

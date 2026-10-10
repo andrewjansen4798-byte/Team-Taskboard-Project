@@ -1,6 +1,10 @@
-
 import { useState } from "react";
-import { Check, ChevronDown, X } from "lucide-react";
+
+import {
+  Check,
+  ChevronDown,
+  X,
+} from "lucide-react";
 
 function AddTask({
   onAddTask,
@@ -10,57 +14,79 @@ function AddTask({
   // MODAL STATE
   // =========================================================
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] =
+    useState(false);
 
   // =========================================================
   // FORM STATE
   // =========================================================
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] =
+    useState("");
+
+  const [description, setDescription] =
+    useState("");
+
+  const [priority, setPriority] =
+    useState("Medium");
+
+  const [dueDate, setDueDate] =
+    useState("");
 
   // =========================================================
   // MULTIPLE ASSIGNEES
   // =========================================================
 
-  const [assignees, setAssignees] = useState([]);
+  // Each selected member is stored as:
+  //
+  // {
+  //   id: User ID,
+  //   name: Display name
+  // }
+  //
+  // The User ID is the authoritative value for the task.
+
+  const [selectedAssignees, setSelectedAssignees] =
+    useState([]);
+
   const [showAssigneeMenu, setShowAssigneeMenu] =
     useState(false);
 
-  const [priority, setPriority] = useState("Medium");
-  const [dueDate, setDueDate] = useState("");
-
   // =========================================================
-  // SHARED TEAM MEMBERS
+  // TASK-ASSIGNABLE MEMBERS
   // =========================================================
-  // App.jsx is the single source of truth for members.
   //
-  // Each member is expected to look like:
-  // {
-  //   id,
-  //   name,
-  //   email,
-  //   role,
-  //   initials
-  // }
+  // Only registered, active workspace members with a real
+  // User ID can be assigned to tasks.
   //
-  // AddTask only reads the member name here because the
-  // current frontend task structure stores assignees by name.
+  // App.jsx already filters these members before passing them
+  // into AddTask, but we keep the validation here as a
+  // defensive frontend safeguard.
 
   const teamMembers = Array.isArray(members)
-    ? members.filter((member) => member?.name)
+    ? members.filter(
+        (member) =>
+          member?.name &&
+          member?.accountStatus === "Active" &&
+          member?.membershipStatus === "Active" &&
+          Boolean(member?.userId)
+      )
     : [];
 
   // =========================================================
-  // DEFAULT ASSIGNEE
+  // MEMBER USER ID
   // =========================================================
 
-  function getDefaultAssignees() {
-    if (teamMembers.length === 0) {
-      return [];
-    }
+  function getMemberUserId(member) {
+    const userId =
+      member?.userId ??
+      member?.id ??
+      member?._id ??
+      "";
 
-    return [teamMembers[0].name];
+    return userId
+      ? String(userId)
+      : "";
   }
 
   // =========================================================
@@ -68,16 +94,13 @@ function AddTask({
   // =========================================================
 
   function handleOpen() {
-    setAssignees((current) => {
-      if (current.length > 0) {
-        return current;
-      }
-
-      return getDefaultAssignees();
-    });
-
-    setIsOpen(true);
+    setTitle("");
+    setDescription("");
+    setPriority("Medium");
+    setDueDate("");
+    setSelectedAssignees([]);
     setShowAssigneeMenu(false);
+    setIsOpen(true);
   }
 
   // =========================================================
@@ -85,29 +108,67 @@ function AddTask({
   // =========================================================
 
   function toggleAssignee(member) {
-    setAssignees((current) => {
-      if (current.includes(member)) {
-        return current.filter(
-          (item) => item !== member
-        );
-      }
+    const memberId =
+      getMemberUserId(member);
 
-      return [
-        ...current,
-        member,
-      ];
-    });
+    const memberName =
+      String(
+        member?.name || ""
+      ).trim();
+
+    if (
+      !memberId ||
+      !memberName
+    ) {
+      return;
+    }
+
+    setSelectedAssignees(
+      (current) => {
+        const alreadySelected =
+          current.some(
+            (item) =>
+              item.id === memberId
+          );
+
+        if (alreadySelected) {
+          return current.filter(
+            (item) =>
+              item.id !== memberId
+          );
+        }
+
+        return [
+          ...current,
+          {
+            id: memberId,
+            name: memberName,
+          },
+        ];
+      }
+    );
   }
 
   // =========================================================
   // REMOVE MEMBER
   // =========================================================
 
-  function removeAssignee(member) {
-    setAssignees((current) =>
-      current.filter(
-        (item) => item !== member
-      )
+  function removeAssignee(memberId) {
+    const normalizedId =
+      String(
+        memberId || ""
+      );
+
+    if (!normalizedId) {
+      return;
+    }
+
+    setSelectedAssignees(
+      (current) =>
+        current.filter(
+          (item) =>
+            item.id !== normalizedId
+        )
     );
   }
 
@@ -118,24 +179,67 @@ function AddTask({
   function handleSubmit(e) {
     e.preventDefault();
 
-    if (!title.trim()) {
+    const trimmedTitle =
+      title.trim();
+
+    if (!trimmedTitle) {
+      window.alert(
+        "Task title is required."
+      );
       return;
     }
 
-    const newTask = {
-      id: Date.now(),
-      title: title.trim(),
-      description: description.trim(),
+    const assigneeIds = [
+      ...new Set(
+        selectedAssignees
+          .map(
+            (member) =>
+              member.id
+          )
+          .filter(Boolean)
+          .map((id) =>
+            String(id)
+          )
+      ),
+    ];
 
-      // Multiple members can be assigned
+    const assignees =
+      selectedAssignees.map(
+        (member) =>
+          member.name
+      );
+
+    const newTask = {
+      title: trimmedTitle,
+
+      description:
+        description.trim(),
+
+      // -----------------------------------------------------
+      // AUTHORITATIVE TASK ASSIGNEES
+      // -----------------------------------------------------
+
+      assigneeIds,
+
+      // -----------------------------------------------------
+      // DISPLAY DATA
+      // -----------------------------------------------------
+      // Kept for the current frontend UI while User IDs
+      // remain the authoritative assignment values.
+
       assignees,
 
       priority,
+
       dueDate,
+
       status: "todo",
     };
 
-    if (typeof onAddTask === "function") {
+    if (
+      typeof onAddTask ===
+      "function"
+    ) {
       onAddTask(newTask);
     }
 
@@ -145,9 +249,9 @@ function AddTask({
 
     setTitle("");
     setDescription("");
-    setAssignees(getDefaultAssignees());
     setPriority("Medium");
     setDueDate("");
+    setSelectedAssignees([]);
     setShowAssigneeMenu(false);
 
     // =======================================================
@@ -171,20 +275,35 @@ function AddTask({
   // =========================================================
 
   function getAssigneeDisplay() {
-    if (assignees.length === 0) {
+    if (
+      selectedAssignees.length ===
+      0
+    ) {
       return "Select members";
     }
 
-    if (assignees.length === 1) {
-      return assignees[0];
+    if (
+      selectedAssignees.length ===
+      1
+    ) {
+      return selectedAssignees[0]
+        .name;
     }
 
-    if (assignees.length === 2) {
-      return assignees.join(", ");
+    if (
+      selectedAssignees.length ===
+      2
+    ) {
+      return selectedAssignees
+        .map(
+          (member) =>
+            member.name
+        )
+        .join(", ");
     }
 
-    return `${assignees[0]}, ${assignees[1]} +${
-      assignees.length - 2
+    return `${selectedAssignees[0].name}, ${selectedAssignees[1].name} +${
+      selectedAssignees.length - 2
     }`;
   }
 
@@ -203,7 +322,10 @@ function AddTask({
         className="add-task-trigger"
         onClick={handleOpen}
       >
-        <span className="add-task-plus">+</span>
+        <span className="add-task-plus">
+          +
+        </span>
+
         Add New Task
       </button>
 
@@ -218,17 +340,19 @@ function AddTask({
         >
           <div
             className="add-task-modal"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) =>
+              e.stopPropagation()
+            }
           >
-
             {/* =================================================
                 MODAL HEADER
             ================================================= */}
 
             <div className="add-task-modal-header">
-
               <div>
-                <h2>Add New Task</h2>
+                <h2>
+                  Add New Task
+                </h2>
 
                 <p>
                   Create a task for your team.
@@ -238,11 +362,13 @@ function AddTask({
               <button
                 type="button"
                 className="add-task-close"
-                onClick={handleClose}
+                onClick={
+                  handleClose
+                }
+                aria-label="Close add task"
               >
                 ×
               </button>
-
             </div>
 
             {/* =================================================
@@ -251,15 +377,15 @@ function AddTask({
 
             <form
               className="add-task-form"
-              onSubmit={handleSubmit}
+              onSubmit={
+                handleSubmit
+              }
             >
-
               {/* =================================================
                   TASK TITLE
               ================================================= */}
 
               <div className="form-group">
-
                 <label>
                   Task Title
                 </label>
@@ -269,11 +395,12 @@ function AddTask({
                   placeholder="Enter task title"
                   value={title}
                   onChange={(e) =>
-                    setTitle(e.target.value)
+                    setTitle(
+                      e.target.value
+                    )
                   }
                   required
                 />
-
               </div>
 
               {/* =================================================
@@ -281,20 +408,22 @@ function AddTask({
               ================================================= */}
 
               <div className="form-group">
-
                 <label>
                   Description
                 </label>
 
                 <textarea
                   placeholder="Describe the task..."
-                  value={description}
+                  value={
+                    description
+                  }
                   onChange={(e) =>
-                    setDescription(e.target.value)
+                    setDescription(
+                      e.target.value
+                    )
                   }
                   rows="4"
                 />
-
               </div>
 
               {/* =================================================
@@ -302,32 +431,33 @@ function AddTask({
               ================================================= */}
 
               <div className="form-row">
-
                 {/* =================================================
                     ASSIGNED MEMBERS
                 ================================================= */}
 
                 <div className="form-group">
-
                   <label>
                     Assign Members
                   </label>
 
                   <div className="assignee-selector">
-
                     <button
                       type="button"
                       className="assignee-selector-button"
                       onClick={() =>
                         setShowAssigneeMenu(
-                          !showAssigneeMenu
+                          (current) =>
+                            !current
                         )
                       }
+                      aria-expanded={
+                        showAssigneeMenu
+                      }
                     >
-
                       <span
                         className={
-                          assignees.length === 0
+                          selectedAssignees.length ===
+                          0
                             ? "assignee-placeholder"
                             : ""
                         }
@@ -337,9 +467,10 @@ function AddTask({
 
                       <ChevronDown
                         size={17}
-                        strokeWidth={2}
+                        strokeWidth={
+                          2
+                        }
                       />
-
                     </button>
 
                     {/* =================================================
@@ -353,137 +484,152 @@ function AddTask({
                           e.stopPropagation()
                         }
                       >
-
                         {/* HEADER */}
 
                         <div className="assignee-dropdown-header">
-
                           <span>
                             Select Members
                           </span>
 
                           <span>
-                            {assignees.length} selected
+                            {
+                              selectedAssignees.length
+                            }{" "}
+                            selected
                           </span>
-
                         </div>
 
                         {/* MEMBER OPTIONS */}
 
                         <div className="assignee-options">
+                          {teamMembers.length >
+                          0 ? (
+                            teamMembers.map(
+                              (
+                                member
+                              ) => {
+                                const memberId =
+                                  getMemberUserId(
+                                    member
+                                  );
 
-                          {teamMembers.length > 0 ? (
-                            teamMembers.map((member) => {
+                                const selected =
+                                  selectedAssignees.some(
+                                    (
+                                      selectedMember
+                                    ) =>
+                                      selectedMember.id ===
+                                      memberId
+                                  );
 
-                              const memberName =
-                                member.name;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={
+                                      memberId
+                                    }
+                                    className={
+                                      selected
+                                        ? "assignee-option selected"
+                                        : "assignee-option"
+                                    }
+                                    onClick={() =>
+                                      toggleAssignee(
+                                        member
+                                      )
+                                    }
+                                  >
+                                    <span className="assignee-option-checkbox">
+                                      {selected && (
+                                        <Check
+                                          size={
+                                            13
+                                          }
+                                          strokeWidth={
+                                            3
+                                          }
+                                        />
+                                      )}
+                                    </span>
 
-                              const selected =
-                                assignees.includes(
-                                  memberName
+                                    <span>
+                                      {
+                                        member.name
+                                      }
+                                    </span>
+                                  </button>
                                 );
-
-                              return (
-                                <button
-                                  type="button"
-                                  key={
-                                    member.id ||
-                                    memberName
-                                  }
-                                  className={
-                                    selected
-                                      ? "assignee-option selected"
-                                      : "assignee-option"
-                                  }
-                                  onClick={() =>
-                                    toggleAssignee(
-                                      memberName
-                                    )
-                                  }
-                                >
-
-                                  <span className="assignee-option-checkbox">
-
-                                    {selected && (
-                                      <Check
-                                        size={13}
-                                        strokeWidth={3}
-                                      />
-                                    )}
-
-                                  </span>
-
-                                  <span>
-                                    {memberName}
-                                  </span>
-
-                                </button>
-                              );
-                            })
+                              }
+                            )
                           ) : (
                             <div className="no-assignee-options">
-                              No team members available
+                              No active registered members available
                             </div>
                           )}
-
                         </div>
 
                         {/* FOOTER */}
 
                         <div className="assignee-dropdown-footer">
-
                           <button
                             type="button"
                             onClick={() =>
-                              setShowAssigneeMenu(false)
+                              setShowAssigneeMenu(
+                                false
+                              )
                             }
                           >
                             Done
                           </button>
-
                         </div>
-
                       </div>
                     )}
-
                   </div>
 
                   {/* =================================================
                       SELECTED MEMBER TAGS
                   ================================================= */}
 
-                  {assignees.length > 0 && (
+                  {selectedAssignees.length >
+                    0 && (
                     <div className="selected-assignees">
-
-                      {assignees.map((member) => (
-                        <span
-                          key={member}
-                          className="selected-assignee-tag"
-                        >
-
-                          {member}
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              removeAssignee(member)
+                      {selectedAssignees.map(
+                        (
+                          member
+                        ) => (
+                          <span
+                            key={
+                              member.id
                             }
-                            aria-label={`Remove ${member}`}
+                            className="selected-assignee-tag"
                           >
+                            {
+                              member.name
+                            }
 
-                            <X
-                              size={12}
-                              strokeWidth={2.5}
-                            />
-
-                          </button>
-
-                        </span>
-                      ))}
-
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeAssignee(
+                                  member.id
+                                )
+                              }
+                              aria-label={`Remove ${member.name}`}
+                            >
+                              <X
+                                size={
+                                  12
+                                }
+                                strokeWidth={
+                                  2.5
+                                }
+                              />
+                            </button>
+                          </span>
+                        )
+                      )}
                     </div>
                   )}
-
                 </div>
 
                 {/* =================================================
@@ -491,20 +637,20 @@ function AddTask({
                 ================================================= */}
 
                 <div className="form-group">
-
                   <label>
                     Priority
                   </label>
 
                   <select
-                    value={priority}
+                    value={
+                      priority
+                    }
                     onChange={(e) =>
                       setPriority(
                         e.target.value
                       )
                     }
                   >
-
                     <option value="High">
                       High
                     </option>
@@ -516,11 +662,8 @@ function AddTask({
                     <option value="Low">
                       Low
                     </option>
-
                   </select>
-
                 </div>
-
               </div>
 
               {/* =================================================
@@ -528,21 +671,21 @@ function AddTask({
               ================================================= */}
 
               <div className="form-group">
-
                 <label>
                   Due Date
                 </label>
 
                 <input
                   type="date"
-                  value={dueDate}
+                  value={
+                    dueDate
+                  }
                   onChange={(e) =>
                     setDueDate(
                       e.target.value
                     )
                   }
                 />
-
               </div>
 
               {/* =================================================
@@ -550,11 +693,12 @@ function AddTask({
               ================================================= */}
 
               <div className="add-task-modal-actions">
-
                 <button
                   type="button"
                   className="cancel-task-button"
-                  onClick={handleClose}
+                  onClick={
+                    handleClose
+                  }
                 >
                   Cancel
                 </button>
@@ -565,11 +709,8 @@ function AddTask({
                 >
                   Create Task
                 </button>
-
               </div>
-
             </form>
-
           </div>
         </div>
       )}

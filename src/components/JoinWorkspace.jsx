@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import { useState } from "react";
+
 import "./JoinWorkspace.css";
+
 import {
   BriefcaseBusiness,
   ArrowLeft,
@@ -54,9 +56,7 @@ function JoinWorkspace({ onBack, onWorkspaceJoined }) {
     // AUTHENTICATION
     // -------------------------------------------------------
 
-    const token = localStorage.getItem(
-      "collabboardToken"
-    );
+    const token = localStorage.getItem("collabboardToken");
 
     if (!token) {
       setError(
@@ -97,7 +97,8 @@ function JoinWorkspace({ onBack, onWorkspaceJoined }) {
         data = await response.json();
       } catch (jsonError) {
         throw new Error(
-          "The server returned an invalid response."
+          "The server returned an invalid response.",
+          { cause: jsonError }
         );
       }
 
@@ -140,9 +141,9 @@ function JoinWorkspace({ onBack, onWorkspaceJoined }) {
       // -----------------------------------------------------
       //
       // The backend must assign joiners as Member.
-      // We never promote a joiner to Team Leader on the
-      // frontend.
-      //
+      // The frontend never promotes a joining user to Team Leader.
+      // -----------------------------------------------------
+
       if (
         workspace.role &&
         workspace.role !== "member"
@@ -158,8 +159,7 @@ function JoinWorkspace({ onBack, onWorkspaceJoined }) {
       // -----------------------------------------------------
 
       const normalizedCode = String(
-        workspace.joinCode ||
-          code
+        workspace.joinCode || code
       )
         .trim()
         .toUpperCase();
@@ -199,9 +199,7 @@ function JoinWorkspace({ onBack, onWorkspaceJoined }) {
 
       if (
         joinError instanceof TypeError &&
-        joinError.message
-          .toLowerCase()
-          .includes("fetch")
+        joinError.message.toLowerCase().includes("fetch")
       ) {
         setError(
           "Unable to connect to the server. Please make sure the backend is running."
@@ -226,14 +224,13 @@ function JoinWorkspace({ onBack, onWorkspaceJoined }) {
       <div className="join-workspace-overlay"></div>
 
       <div className="join-workspace-card">
-
         {/* Logo */}
         <div className="join-workspace-logo">
           <div className="join-workspace-logo-icon">
             <span>
               <BriefcaseBusiness
                 size={31}
-                strokeWidth={3.0}
+                strokeWidth={3}
               />
             </span>
           </div>
@@ -294,15 +291,12 @@ function JoinWorkspace({ onBack, onWorkspaceJoined }) {
           className="join-workspace-form"
           onSubmit={handleJoin}
         >
-
           <div className="join-workspace-field">
-
             <label htmlFor="inviteCode">
               Invitation Code
             </label>
 
             <div className="join-workspace-input-wrapper">
-
               <span className="join-workspace-input-icon">
                 #
               </span>
@@ -324,14 +318,11 @@ function JoinWorkspace({ onBack, onWorkspaceJoined }) {
                 autoComplete="off"
                 maxLength={8}
               />
-
             </div>
-
           </div>
 
           {/* Help */}
           <div className="join-workspace-help">
-
             <div className="join-help-icon">
               ?
             </div>
@@ -341,7 +332,6 @@ function JoinWorkspace({ onBack, onWorkspaceJoined }) {
               <br />
               invitation code.
             </p>
-
           </div>
 
           {/* Join Button */}
@@ -365,7 +355,6 @@ function JoinWorkspace({ onBack, onWorkspaceJoined }) {
               <ArrowRight size={20} />
             )}
           </button>
-
         </form>
 
         {/* Back */}
@@ -376,12 +365,12 @@ function JoinWorkspace({ onBack, onWorkspaceJoined }) {
           disabled={isJoining}
         >
           <ArrowLeft size={16} />
+
           <span>Back</span>
         </button>
 
         {/* Security */}
         <div className="join-workspace-security">
-
           <div className="join-security-icon">
             🔒
           </div>
@@ -395,9 +384,7 @@ function JoinWorkspace({ onBack, onWorkspaceJoined }) {
               Only members of your workspace can access team data.
             </p>
           </div>
-
         </div>
-
       </div>
     </div>
   );

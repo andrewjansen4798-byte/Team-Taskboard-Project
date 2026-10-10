@@ -1,10 +1,8 @@
-
 import {
     useEffect,
     useMemo,
     useState,
 } from "react";
-
 import {
     ClipboardList,
     ListTodo,
@@ -16,7 +14,6 @@ import {
     CheckCircle2,
     ListChecks,
 } from "lucide-react";
-
 import "./DashboardPage.css";
 
 function DashboardPage({
@@ -27,12 +24,10 @@ function DashboardPage({
     // =========================================================
     // VIEW STATES
     // =========================================================
-
     const [
         showAllUpcoming,
         setShowAllUpcoming,
     ] = useState(false);
-
     const [
         showAllActivity,
         setShowAllActivity,
@@ -41,7 +36,6 @@ function DashboardPage({
     // =========================================================
     // DONUT HOVER STATE
     // =========================================================
-
     const [
         hoveredStatus,
         setHoveredStatus,
@@ -50,7 +44,6 @@ function DashboardPage({
     // =========================================================
     // ACTIVITIES
     // =========================================================
-
     const [
         activities,
         setActivities,
@@ -86,9 +79,38 @@ function DashboardPage({
     });
 
     // =========================================================
+    // ACTIVITY CLOCK
+    // =========================================================
+    // Store the current time in state so relative timestamps
+    // stay stable during rendering. Refresh the clock every
+    // minute so labels like "5m ago" remain up to date.
+    const [currentTime, setCurrentTime] = useState(null);
+
+    useEffect(() => {
+        const updateCurrentTime = () => {
+            setCurrentTime(Date.now());
+        };
+
+        // Schedule the first update asynchronously.
+        const timeoutId = window.setTimeout(
+            updateCurrentTime,
+            0
+        );
+
+        const intervalId = window.setInterval(
+            updateCurrentTime,
+            60_000
+        );
+
+        return () => {
+            window.clearTimeout(timeoutId);
+            window.clearInterval(intervalId);
+        };
+    }, []);
+
+    // =========================================================
     // REFRESH ACTIVITIES
     // =========================================================
-
     useEffect(() => {
         const loadActivities = () => {
             try {
@@ -152,16 +174,9 @@ function DashboardPage({
     // =========================================================
     // GET TASK ASSIGNEES
     // =========================================================
-    //
-    // New structure:
-    // assignees: ["Andrew Terence", "John Silva"]
-    //
-    // Older structure:
-    // assignedTo: "Andrew Terence"
-    //
-    // Supports both formats.
+    // Supports the new multiple-assignee structure and the
+    // older single-assignee structure.
     // =========================================================
-
     const getTaskAssignees = (task) => {
         if (!task) {
             return [];
@@ -193,13 +208,9 @@ function DashboardPage({
     // =========================================================
     // SHARED TEAM MEMBERS
     // =========================================================
-    //
     // App.jsx is the single source of truth.
-    //
-    // Dashboard uses this list instead of creating its own
-    // member list from task assignments.
+    // Members without tasks are still included in the summary.
     // =========================================================
-
     const teamMembers = useMemo(() => {
         if (!Array.isArray(members)) {
             return [];
@@ -215,7 +226,6 @@ function DashboardPage({
     // =========================================================
     // TASK COUNTS
     // =========================================================
-
     const totalTasks =
         tasks.length;
 
@@ -246,7 +256,6 @@ function DashboardPage({
     // =========================================================
     // COMPLETION
     // =========================================================
-
     const completionPercentage =
         totalTasks === 0
             ? 0
@@ -261,9 +270,7 @@ function DashboardPage({
     // =========================================================
     // TODAY
     // =========================================================
-
-    const today =
-        new Date();
+    const today = new Date();
 
     today.setHours(
         0,
@@ -275,7 +282,6 @@ function DashboardPage({
     // =========================================================
     // OVERDUE
     // =========================================================
-
     const overdueTasks =
         tasks.filter(
             (task) => {
@@ -309,7 +315,6 @@ function DashboardPage({
     // =========================================================
     // UPCOMING TASKS
     // =========================================================
-
     const upcomingTasks =
         tasks
             .filter(
@@ -366,17 +371,6 @@ function DashboardPage({
     // =========================================================
     // TEAM SUMMARY
     // =========================================================
-    //
-    // IMPORTANT:
-    // The member list comes from App.jsx.
-    //
-    // This guarantees that:
-    // - Members with zero tasks still appear.
-    // - Renamed members appear with their new name.
-    // - Deleted members disappear.
-    // - Each multiple-assignee task counts for every member.
-    // =========================================================
-
     const teamSummary =
         useMemo(() => {
             return teamMembers.map(
@@ -470,7 +464,6 @@ function DashboardPage({
     // =========================================================
     // DEADLINE TEXT
     // =========================================================
-
     const getDaysRemaining =
         (date) => {
             const due =
@@ -558,11 +551,9 @@ function DashboardPage({
 
             return "deadline-normal";
         };
-
-    // =========================================================
+            // =========================================================
     // UPCOMING TASK ASSIGNEE DISPLAY
     // =========================================================
-
     const getUpcomingAssigneeText =
         (task) => {
             const assignees =
@@ -598,7 +589,6 @@ function DashboardPage({
     // =========================================================
     // ACTIVITY TEXT
     // =========================================================
-
     const getActivityText =
         (activity) => {
             const title =
@@ -685,18 +675,38 @@ function DashboardPage({
     // =========================================================
     // ACTIVITY TIME
     // =========================================================
-
     const getActivityTime =
         (timestamp) => {
             if (!timestamp) {
                 return "";
             }
 
+            const timestampValue =
+                new Date(timestamp).getTime();
+
+            if (
+                !Number.isFinite(timestampValue)
+            ) {
+                return "";
+            }
+
+            // Before the first clock update, display the date
+            // instead of calculating with an unavailable time.
+            if (currentTime === null) {
+                return new Date(
+                    timestampValue
+                ).toLocaleDateString(
+                    "en-US",
+                    {
+                        month: "short",
+                        day: "numeric",
+                    }
+                );
+            }
+
             const difference =
-                Date.now() -
-                new Date(
-                    timestamp
-                ).getTime();
+                currentTime -
+                timestampValue;
 
             const seconds =
                 Math.floor(
@@ -760,7 +770,6 @@ function DashboardPage({
     // =========================================================
     // INITIALS
     // =========================================================
-
     const getInitials =
         (name) => {
             if (!name) {
@@ -785,9 +794,7 @@ function DashboardPage({
     // =========================================================
     // DONUT
     // =========================================================
-
-    const radius =
-        78;
+    const radius = 78;
 
     const circumference =
         2 *
@@ -862,7 +869,6 @@ function DashboardPage({
     // =========================================================
     // STATUS HELPERS
     // =========================================================
-
     const getDonutClass =
         (status) => {
             if (
@@ -898,18 +904,13 @@ function DashboardPage({
     // =========================================================
     // RENDER
     // =========================================================
-
     return (
         <div className="dashboard-page">
-
             {/* =================================================
                 HEADER
             ================================================= */}
-
             <div className="dashboard-header">
-
                 <div>
-
                     <p className="dashboard-label">
                         TEAM WORKSPACE
                     </p>
@@ -922,7 +923,6 @@ function DashboardPage({
                         Manage your team's work
                         and track progress.
                     </p>
-
                 </div>
 
                 <button
@@ -932,28 +932,21 @@ function DashboardPage({
                 >
                     Open Board →
                 </button>
-
             </div>
 
             {/* =================================================
                 STATISTICS
             ================================================= */}
-
             <div className="dashboard-statistics">
-
                 <div className="dashboard-stat-card">
-
                     <div className="dashboard-stat-icon dashboard-stat-icon-blue">
-
                         <ClipboardList
                             size={23}
                             strokeWidth={1.8}
                         />
-
                     </div>
 
                     <div className="dashboard-stat-content">
-
                         <span className="dashboard-stat-title">
                             Total Tasks
                         </span>
@@ -965,24 +958,18 @@ function DashboardPage({
                         <span className="dashboard-stat-description">
                             All tasks in workspace
                         </span>
-
                     </div>
-
                 </div>
 
                 <div className="dashboard-stat-card">
-
                     <div className="dashboard-stat-icon dashboard-stat-icon-purple">
-
                         <ListTodo
                             size={23}
                             strokeWidth={1.8}
                         />
-
                     </div>
 
                     <div className="dashboard-stat-content">
-
                         <span className="dashboard-stat-title">
                             To Do
                         </span>
@@ -994,24 +981,18 @@ function DashboardPage({
                         <span className="dashboard-stat-description">
                             Tasks to get started
                         </span>
-
                     </div>
-
                 </div>
 
                 <div className="dashboard-stat-card">
-
                     <div className="dashboard-stat-icon dashboard-stat-icon-orange">
-
                         <Clock3
                             size={23}
                             strokeWidth={1.8}
                         />
-
                     </div>
 
                     <div className="dashboard-stat-content">
-
                         <span className="dashboard-stat-title">
                             In Progress
                         </span>
@@ -1023,24 +1004,18 @@ function DashboardPage({
                         <span className="dashboard-stat-description">
                             Tasks in progress
                         </span>
-
                     </div>
-
                 </div>
 
                 <div className="dashboard-stat-card">
-
                     <div className="dashboard-stat-icon dashboard-stat-icon-green">
-
                         <CircleCheck
                             size={23}
                             strokeWidth={1.8}
                         />
-
                     </div>
 
                     <div className="dashboard-stat-content">
-
                         <span className="dashboard-stat-title">
                             Done
                         </span>
@@ -1052,24 +1027,18 @@ function DashboardPage({
                         <span className="dashboard-stat-description">
                             Tasks completed
                         </span>
-
                     </div>
-
                 </div>
 
                 <div className="dashboard-stat-card dashboard-stat-card-overdue">
-
                     <div className="dashboard-stat-icon dashboard-stat-icon-red">
-
                         <TriangleAlert
                             size={23}
                             strokeWidth={1.8}
                         />
-
                     </div>
 
                     <div className="dashboard-stat-content">
-
                         <span className="dashboard-stat-title">
                             Overdue
                         </span>
@@ -1081,29 +1050,20 @@ function DashboardPage({
                         <span className="dashboard-stat-description">
                             Tasks past due date
                         </span>
-
                     </div>
-
                 </div>
-
             </div>
 
             {/* =================================================
                 STATUS + UPCOMING
             ================================================= */}
-
             <div className="dashboard-main-grid">
-
                 {/* =================================================
                     STATUS OVERVIEW
                 ================================================= */}
-
                 <section className="dashboard-card dashboard-status-card">
-
                     <div className="dashboard-card-header">
-
                         <div>
-
                             <span className="dashboard-card-label">
                                 TASK STATUS
                             </span>
@@ -1115,28 +1075,21 @@ function DashboardPage({
                             <p>
                                 Get a snapshot of the status of your tasks.
                             </p>
-
                         </div>
-
                     </div>
 
                     <div className="dashboard-status-overview">
-
                         {/* =================================================
                             DONUT
                         ================================================= */}
-
                         <div className="dashboard-donut-wrapper">
-
                             <svg
                                 className="dashboard-donut"
                                 width="225"
                                 height="225"
                                 viewBox="0 0 200 200"
                             >
-
                                 {/* BACKGROUND */}
-
                                 <circle
                                     cx="100"
                                     cy="100"
@@ -1146,10 +1099,7 @@ function DashboardPage({
                                     strokeWidth="25"
                                 />
 
-                                {/* =================================================
-                                    DONE
-                                ================================================= */}
-
+                                {/* DONE */}
                                 {doneCount > 0 && (
                                     <circle
                                         className={`
@@ -1175,10 +1125,7 @@ function DashboardPage({
                                     />
                                 )}
 
-                                {/* =================================================
-                                    IN PROGRESS
-                                ================================================= */}
-
+                                {/* IN PROGRESS */}
                                 {doingCount > 0 && (
                                     <circle
                                         className={`
@@ -1206,10 +1153,7 @@ function DashboardPage({
                                     />
                                 )}
 
-                                {/* =================================================
-                                    TO DO
-                                ================================================= */}
-
+                                {/* TO DO */}
                                 {todoCount > 0 && (
                                     <circle
                                         className={`
@@ -1240,10 +1184,7 @@ function DashboardPage({
                                     />
                                 )}
 
-                                {/* =================================================
-                                    IN REVIEW
-                                ================================================= */}
-
+                                {/* IN REVIEW */}
                                 {reviewCount > 0 && (
                                     <circle
                                         className={`
@@ -1274,15 +1215,10 @@ function DashboardPage({
                                         }
                                     />
                                 )}
-
                             </svg>
 
-                            {/* =================================================
-                                CENTER TEXT
-                            ================================================= */}
-
+                            {/* CENTER TEXT */}
                             <div className="dashboard-donut-center">
-
                                 <strong>
                                     {totalTasks}
                                 </strong>
@@ -1290,16 +1226,11 @@ function DashboardPage({
                                 <span>
                                     Total Tasks
                                 </span>
-
                             </div>
 
-                            {/* =================================================
-                                SMALL TOOLTIP
-                            ================================================= */}
-
+                            {/* SMALL TOOLTIP */}
                             {hoveredStatus && (
                                 <div className="dashboard-donut-tooltip">
-
                                     <span
                                         className={`
                                             dashboard-tooltip-dot
@@ -1308,7 +1239,6 @@ function DashboardPage({
                                     />
 
                                     <span className="dashboard-tooltip-name">
-
                                         {hoveredStatus === "done" &&
                                             "Done"}
 
@@ -1320,11 +1250,9 @@ function DashboardPage({
 
                                         {hoveredStatus === "review" &&
                                             "In Review"}
-
                                     </span>
 
                                     <strong>
-
                                         {hoveredStatus === "done" &&
                                             doneCount}
 
@@ -1336,22 +1264,14 @@ function DashboardPage({
 
                                         {hoveredStatus === "review" &&
                                             reviewCount}
-
                                     </strong>
-
                                 </div>
                             )}
-
                         </div>
 
-                        {/* =================================================
-                            LEGEND
-                        ================================================= */}
-
+                        {/* LEGEND */}
                         <div className="dashboard-status-legend">
-
                             {/* DONE */}
-
                             <div
                                 className={`
                                     dashboard-status-legend-item
@@ -1371,15 +1291,12 @@ function DashboardPage({
                                     handleStatusLeave
                                 }
                             >
-
                                 <div className="dashboard-status-name">
-
                                     <span className="dashboard-status-dot dashboard-dot-done" />
 
                                     <span>
                                         Done
                                     </span>
-
                                 </div>
 
                                 <strong>
@@ -1389,11 +1306,9 @@ function DashboardPage({
                                 <small>
                                     {donePercentage}%
                                 </small>
-
                             </div>
 
                             {/* IN PROGRESS */}
-
                             <div
                                 className={`
                                     dashboard-status-legend-item
@@ -1413,15 +1328,12 @@ function DashboardPage({
                                     handleStatusLeave
                                 }
                             >
-
                                 <div className="dashboard-status-name">
-
                                     <span className="dashboard-status-dot dashboard-dot-doing" />
 
                                     <span>
                                         In Progress
                                     </span>
-
                                 </div>
 
                                 <strong>
@@ -1431,11 +1343,9 @@ function DashboardPage({
                                 <small>
                                     {doingPercentage}%
                                 </small>
-
                             </div>
 
                             {/* TO DO */}
-
                             <div
                                 className={`
                                     dashboard-status-legend-item
@@ -1455,15 +1365,12 @@ function DashboardPage({
                                     handleStatusLeave
                                 }
                             >
-
                                 <div className="dashboard-status-name">
-
                                     <span className="dashboard-status-dot dashboard-dot-todo" />
 
                                     <span>
                                         To Do
                                     </span>
-
                                 </div>
 
                                 <strong>
@@ -1473,11 +1380,9 @@ function DashboardPage({
                                 <small>
                                     {todoPercentage}%
                                 </small>
-
                             </div>
 
                             {/* IN REVIEW */}
-
                             <div
                                 className={`
                                     dashboard-status-legend-item
@@ -1497,15 +1402,12 @@ function DashboardPage({
                                     handleStatusLeave
                                 }
                             >
-
                                 <div className="dashboard-status-name">
-
                                     <span className="dashboard-status-dot dashboard-dot-review" />
 
                                     <span>
                                         In Review
                                     </span>
-
                                 </div>
 
                                 <strong>
@@ -1515,25 +1417,16 @@ function DashboardPage({
                                 <small>
                                     {reviewPercentage}%
                                 </small>
-
                             </div>
-
                         </div>
-
                     </div>
-
                 </section>
-
-                {/* =================================================
+                                {/* =================================================
                     UPCOMING DUE TASKS
                 ================================================= */}
-
                 <section className="dashboard-card dashboard-upcoming-card">
-
                     <div className="dashboard-card-header">
-
                         <div>
-
                             <span className="dashboard-card-label">
                                 DEADLINES
                             </span>
@@ -1541,7 +1434,6 @@ function DashboardPage({
                             <h2>
                                 Upcoming Due Tasks
                             </h2>
-
                         </div>
 
                         {upcomingTasks.length > 3 && (
@@ -1560,14 +1452,11 @@ function DashboardPage({
                                     : "View more"}
                             </button>
                         )}
-
                     </div>
 
                     <div className="dashboard-upcoming-list">
-
                         {upcomingTasks.length === 0 ? (
                             <div className="dashboard-empty-message">
-
                                 <CalendarClock
                                     size={22}
                                     strokeWidth={1.7}
@@ -1576,33 +1465,24 @@ function DashboardPage({
                                 <span>
                                     No upcoming due tasks
                                 </span>
-
                             </div>
                         ) : (
                             displayedUpcomingTasks.map(
                                 (task) => (
                                     <div
                                         className="dashboard-upcoming-item"
-                                        key={
-                                            task.id
-                                        }
+                                        key={task.id}
                                     >
-
                                         <div className="dashboard-upcoming-icon">
-
                                             <CalendarClock
                                                 size={17}
                                                 strokeWidth={1.8}
                                             />
-
                                         </div>
 
                                         <div className="dashboard-upcoming-info">
-
                                             <strong>
-                                                {
-                                                    task.title
-                                                }
+                                                {task.title}
                                             </strong>
 
                                             <span>
@@ -1610,11 +1490,9 @@ function DashboardPage({
                                                     task
                                                 )}
                                             </span>
-
                                         </div>
 
                                         <div className="dashboard-upcoming-date">
-
                                             <span
                                                 className={getDeadlineClass(
                                                     task.dueDate
@@ -1624,34 +1502,23 @@ function DashboardPage({
                                                     task.dueDate
                                                 )}
                                             </span>
-
                                         </div>
-
                                     </div>
                                 )
                             )
                         )}
-
                     </div>
-
                 </section>
-
             </div>
 
             {/* =================================================
                 SECOND ROW
             ================================================= */}
-
             <div className="dashboard-secondary-grid">
-
                 {/* TASK COMPLETION */}
-
                 <section className="dashboard-card dashboard-completion-card">
-
                     <div className="dashboard-completion-header">
-
                         <div>
-
                             <span className="dashboard-card-label">
                                 PROJECT PROGRESS
                             </span>
@@ -1659,17 +1526,14 @@ function DashboardPage({
                             <h2>
                                 Task Completion
                             </h2>
-
                         </div>
 
                         <strong className="dashboard-completion-percentage">
                             {completionPercentage}%
                         </strong>
-
                     </div>
 
                     <div className="dashboard-completion-bar">
-
                         <div
                             className="dashboard-completion-fill"
                             style={{
@@ -1677,19 +1541,13 @@ function DashboardPage({
                                     `${completionPercentage}%`,
                             }}
                         />
-
                     </div>
-
                 </section>
 
                 {/* TEAM TASK SUMMARY */}
-
                 <section className="dashboard-card dashboard-team-summary-card">
-
                     <div className="dashboard-card-header">
-
                         <div>
-
                             <span className="dashboard-card-label">
                                 TEAM WORKSPACE
                             </span>
@@ -1697,53 +1555,38 @@ function DashboardPage({
                             <h2>
                                 Team Task Summary
                             </h2>
-
                         </div>
-
                     </div>
 
                     <div className="dashboard-team-summary-content">
-
                         <div className="dashboard-team-summary-stat">
-
                             <span className="dashboard-team-summary-icon dashboard-summary-purple">
-
                                 <Users
                                     size={17}
                                     strokeWidth={1.8}
                                 />
-
                             </span>
 
                             <div>
-
                                 <strong>
-                                    {
-                                        teamMembers.length
-                                    }
+                                    {teamMembers.length}
                                 </strong>
 
                                 <span>
                                     Active Members
                                 </span>
-
                             </div>
-
                         </div>
 
                         <div className="dashboard-team-summary-stat">
-
                             <span className="dashboard-team-summary-icon dashboard-summary-blue">
-
                                 <ListChecks
                                     size={17}
                                     strokeWidth={1.8}
                                 />
-
                             </span>
 
                             <div>
-
                                 <strong>
                                     {totalTasks}
                                 </strong>
@@ -1751,24 +1594,18 @@ function DashboardPage({
                                 <span>
                                     Total Tasks
                                 </span>
-
                             </div>
-
                         </div>
 
                         <div className="dashboard-team-summary-stat">
-
                             <span className="dashboard-team-summary-icon dashboard-summary-green">
-
                                 <CheckCircle2
                                     size={17}
                                     strokeWidth={1.8}
                                 />
-
                             </span>
 
                             <div>
-
                                 <strong>
                                     {doneCount}
                                 </strong>
@@ -1776,24 +1613,18 @@ function DashboardPage({
                                 <span>
                                     Completed
                                 </span>
-
                             </div>
-
                         </div>
 
                         <div className="dashboard-team-summary-stat">
-
                             <span className="dashboard-team-summary-icon dashboard-summary-orange">
-
                                 <Clock3
                                     size={17}
                                     strokeWidth={1.8}
                                 />
-
                             </span>
 
                             <div>
-
                                 <strong>
                                     {doingCount}
                                 </strong>
@@ -1801,27 +1632,18 @@ function DashboardPage({
                                 <span>
                                     In Progress
                                 </span>
-
                             </div>
-
                         </div>
-
                     </div>
-
                 </section>
-
             </div>
 
             {/* =================================================
                 TEAM ACTIVITY
             ================================================= */}
-
             <section className="dashboard-card dashboard-activity-card">
-
                 <div className="dashboard-card-header">
-
                     <div>
-
                         <span className="dashboard-card-label">
                             RECENT UPDATES
                         </span>
@@ -1829,7 +1651,6 @@ function DashboardPage({
                         <h2>
                             Team Activity
                         </h2>
-
                     </div>
 
                     {activities.length > 3 && (
@@ -1848,11 +1669,9 @@ function DashboardPage({
                                 : "View more"}
                         </button>
                     )}
-
                 </div>
 
                 <div className="dashboard-activity-list">
-
                     {activities.length === 0 ? (
                         <div className="dashboard-empty-message">
                             No recent activity yet.
@@ -1869,22 +1688,16 @@ function DashboardPage({
                             (activity) => (
                                 <div
                                     className="dashboard-activity-item"
-                                    key={
-                                        activity.id
-                                    }
+                                    key={activity.id}
                                 >
-
                                     <div className="dashboard-activity-avatar">
-
                                         {getInitials(
                                             activity.member ||
                                                 "Team Member"
                                         )}
-
                                     </div>
 
                                     <div className="dashboard-activity-info">
-
                                         <strong>
                                             {
                                                 activity.member ||
@@ -1897,7 +1710,6 @@ function DashboardPage({
                                                 activity
                                             )}
                                         </span>
-
                                     </div>
 
                                     <small>
@@ -1905,27 +1717,19 @@ function DashboardPage({
                                             activity.timestamp
                                         )}
                                     </small>
-
                                 </div>
                             )
                         )
                     )}
-
                 </div>
-
             </section>
-
-            {/* =================================================
+                        {/* =================================================
                 TEAM PERFORMANCE
             ================================================= */}
-
             {teamSummary.length > 0 && (
                 <section className="dashboard-card dashboard-team-performance-card">
-
                     <div className="dashboard-card-header">
-
                         <div>
-
                             <span className="dashboard-card-label">
                                 TEAM PERFORMANCE
                             </span>
@@ -1933,85 +1737,57 @@ function DashboardPage({
                             <h2>
                                 Member Task Progress
                             </h2>
-
                         </div>
-
                     </div>
 
                     <div className="dashboard-team-performance-list">
-
                         {teamSummary.map(
                             (member) => (
                                 <div
                                     className="dashboard-team-performance-item"
-                                    key={
-                                        member.id
-                                    }
+                                    key={member.id}
                                 >
-
                                     <div className="dashboard-team-member-info">
-
                                         <div className="dashboard-team-avatar">
-
                                             {getInitials(
                                                 member.name
                                             )}
-
                                         </div>
 
                                         <div>
-
                                             <strong>
-                                                {
-                                                    member.name
-                                                }
+                                                {member.name}
                                             </strong>
 
                                             <span>
-                                                {
-                                                    member.completed
-                                                }{" "}
+                                                {member.completed}{" "}
                                                 of{" "}
-                                                {
-                                                    member.total
-                                                }{" "}
+                                                {member.total}{" "}
                                                 tasks completed
                                             </span>
-
                                         </div>
-
                                     </div>
 
                                     <div className="dashboard-team-progress">
-
                                         <div className="dashboard-team-progress-bar">
-
                                             <div
                                                 style={{
                                                     width:
                                                         `${member.percentage}%`,
                                                 }}
                                             />
-
                                         </div>
 
                                         <strong>
-                                            {
-                                                member.percentage
-                                            }%
+                                            {member.percentage}%
                                         </strong>
-
                                     </div>
-
                                 </div>
                             )
                         )}
-
                     </div>
-
                 </section>
             )}
-
         </div>
     );
 }

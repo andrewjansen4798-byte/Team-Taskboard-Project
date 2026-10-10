@@ -2621,10 +2621,7 @@ const removeWorkspaceMember = async (
   res
 ) => {
   try {
-    const {
-      workspaceId,
-      userId,
-    } = req.params;
+    const { userId } = req.params;
 
     if (
       !validateWorkspaceContext(
