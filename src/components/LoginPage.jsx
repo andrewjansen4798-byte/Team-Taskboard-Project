@@ -10,6 +10,10 @@ function LoginPage({ onLogin, onSignUp }) {
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
+  // =========================================================
+  // HANDLE LOGIN
+  // =========================================================
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -58,7 +62,8 @@ function LoginPage({ onLogin, onSignUp }) {
         data = await response.json();
       } catch (jsonError) {
         throw new Error(
-          "The server returned an invalid response."
+          "The server returned an invalid response.",
+          { cause: jsonError }
         );
       }
 
@@ -86,11 +91,6 @@ function LoginPage({ onLogin, onSignUp }) {
       // -----------------------------------------------------
       // STORE AUTHENTICATION DATA
       // -----------------------------------------------------
-      //
-      // These keys are already used by the existing App logout
-      // and account-management logic.
-      //
-      // -----------------------------------------------------
 
       localStorage.setItem(
         "collabboardToken",
@@ -105,11 +105,9 @@ function LoginPage({ onLogin, onSignUp }) {
       // -----------------------------------------------------
       // REMEMBER ME
       // -----------------------------------------------------
-      //
-      // The JWT itself remains valid according to the backend
-      // JWT expiry. This flag is stored for frontend state
-      // handling when the App is integrated.
-      //
+      // Store the selected preference for the existing App
+      // integration. Actual JWT lifetime is controlled by
+      // the backend.
       // -----------------------------------------------------
 
       localStorage.setItem(
@@ -119,13 +117,6 @@ function LoginPage({ onLogin, onSignUp }) {
 
       // -----------------------------------------------------
       // LOGIN SUCCESS
-      // -----------------------------------------------------
-      //
-      // Pass the complete authentication result to App.jsx.
-      //
-      // The current App can safely receive these arguments even
-      // before we update its login handler.
-      //
       // -----------------------------------------------------
 
       onLogin({
@@ -157,22 +148,24 @@ function LoginPage({ onLogin, onSignUp }) {
     }
   };
 
+  // =========================================================
+  // UI
+  // =========================================================
+
   return (
     <div className="login-page">
-
       {/* Soft blurred background */}
       <div className="login-blur login-blur-one"></div>
       <div className="login-blur login-blur-two"></div>
       <div className="login-blur login-blur-three"></div>
 
       <div className="login-card">
-
         {/* Logo */}
         <div className="login-logo">
           <div className="logo-icon">
             <BriefcaseBusiness
               size={30}
-              strokeWidth={3.0}
+              strokeWidth={3}
             />
           </div>
 
@@ -190,7 +183,6 @@ function LoginPage({ onLogin, onSignUp }) {
 
         {/* Login Form */}
         <form onSubmit={handleSubmit}>
-
           {/* Email */}
           <div className="input-group">
             <label htmlFor="email">
@@ -233,9 +225,7 @@ function LoginPage({ onLogin, onSignUp }) {
                 type="button"
                 className="show-password"
                 onClick={() =>
-                  setShowPassword(
-                    !showPassword
-                  )
+                  setShowPassword((previous) => !previous)
                 }
                 disabled={isLoading}
                 aria-label={
@@ -244,24 +234,19 @@ function LoginPage({ onLogin, onSignUp }) {
                     : "Show password"
                 }
               >
-                {showPassword
-                  ? "🙈"
-                  : "👁️"}
+                {showPassword ? "🙈" : "👁️"}
               </button>
             </div>
           </div>
 
           {/* Remember Me + Forgot Password */}
           <div className="login-options">
-
             <label className="remember-me">
               <input
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) =>
-                  setRememberMe(
-                    e.target.checked
-                  )
+                  setRememberMe(e.target.checked)
                 }
                 disabled={isLoading}
               />
@@ -283,7 +268,6 @@ function LoginPage({ onLogin, onSignUp }) {
             >
               Forgot password?
             </button>
-
           </div>
 
           {/* Error Message */}
@@ -303,7 +287,6 @@ function LoginPage({ onLogin, onSignUp }) {
               ? "Logging in...⏳"
               : "Log In"}
           </button>
-
         </form>
 
         {/* Sign Up */}
@@ -325,7 +308,6 @@ function LoginPage({ onLogin, onSignUp }) {
         <p className="login-footer">
           🔒 Authorized team members only
         </p>
-
       </div>
     </div>
   );

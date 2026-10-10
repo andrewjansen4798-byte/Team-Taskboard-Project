@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 import {
   Mail,
   Lock,
@@ -21,186 +22,593 @@ function SettingsPage({
   onChangeEmail,
   onChangePassword,
 }) {
-  const [showEmailForm, setShowEmailForm] = useState(false);
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  // =========================================================
+  // SECTION STATE
+  // =========================================================
 
-  const [newEmail, setNewEmail] = useState("");
+  const [showEmailForm, setShowEmailForm] =
+    useState(false);
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPasswordForm, setShowPasswordForm] =
+    useState(false);
 
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // =========================================================
+  // CHANGE EMAIL STATE
+  // =========================================================
 
-  const [verificationSent, setVerificationSent] = useState(false);
-  const [passwordUpdated, setPasswordUpdated] = useState(false);
+  const [newEmail, setNewEmail] =
+    useState("");
 
-  // The authenticated user is restored from the real login session.
-  // This prevents the settings page from displaying a hard-coded email.
+  const [emailCurrentPassword, setEmailCurrentPassword] =
+    useState("");
+
+  const [showEmailCurrentPassword, setShowEmailCurrentPassword] =
+    useState(false);
+
+  const [verificationSent, setVerificationSent] =
+    useState(false);
+
+  const [emailSubmitting, setEmailSubmitting] =
+    useState(false);
+
+  // =========================================================
+  // CHANGE PASSWORD STATE
+  // =========================================================
+
+  const [currentPassword, setCurrentPassword] =
+    useState("");
+
+  const [newPassword, setNewPassword] =
+    useState("");
+
+  const [confirmPassword, setConfirmPassword] =
+    useState("");
+
+  const [showCurrentPassword, setShowCurrentPassword] =
+    useState(false);
+
+  const [showNewPassword, setShowNewPassword] =
+    useState(false);
+
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState(false);
+
+  const [passwordUpdated, setPasswordUpdated] =
+    useState(false);
+
+  const [passwordSubmitting, setPasswordSubmitting] =
+    useState(false);
+
+  // =========================================================
+  // DELETE ACCOUNT STATE
+  // =========================================================
+
+  const [showDeleteModal, setShowDeleteModal] =
+    useState(false);
+
+  const [isDeleting, setIsDeleting] =
+    useState(false);
+
+  // =========================================================
+  // CURRENT USER
+  // =========================================================
+  //
+  // The authenticated user comes from the existing login
+  // session instead of being hard-coded.
+  //
+  // =========================================================
+
   const currentUser = (() => {
     try {
-      const storedUser = localStorage.getItem("collabboardUser");
-      return storedUser ? JSON.parse(storedUser) : null;
+      const storedUser =
+        localStorage.getItem(
+          "collabboardUser"
+        );
+
+      return storedUser
+        ? JSON.parse(storedUser)
+        : null;
     } catch (error) {
-      console.error("Failed to read current user from localStorage:", error);
+      console.error(
+        "Failed to read current user from localStorage:",
+        error
+      );
+
       return null;
     }
   })();
 
-  const currentEmail = currentUser?.email || "Email unavailable";
+  const currentEmail =
+    currentUser?.email ||
+    "Email unavailable";
 
   // =========================================================
-  // DELETE ACCOUNT
+  // EMAIL VERIFICATION STATUS
+  // =========================================================
+  //
+  // Do not claim that an email is verified unless the account
+  // actually provides a verification value.
+  //
   // =========================================================
 
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const emailVerificationState =
+    currentUser?.emailVerified;
+
+  function getEmailVerificationLabel() {
+    if (
+      emailVerificationState ===
+      true
+    ) {
+      return "Email Verified";
+    }
+
+    if (
+      emailVerificationState ===
+      false
+    ) {
+      return "Email Not Verified";
+    }
+
+    return "Verification Status Unavailable";
+  }
+
+  function getEmailVerificationDescription() {
+    if (
+      emailVerificationState ===
+      true
+    ) {
+      return "Your email address is verified.";
+    }
+
+    if (
+      emailVerificationState ===
+      false
+    ) {
+      return "Your email address has not been verified yet.";
+    }
+
+    return "Your account does not currently provide an email verification status.";
+  }
+
+  // =========================================================
+  // PASSWORD STRENGTH
+  // =========================================================
+
+  function getPasswordStrength(password) {
+    if (!password) {
+      return {
+        label: "",
+        score: 0,
+      };
+    }
+
+    let score = 0;
+
+    if (
+      password.length >= 8
+    ) {
+      score += 1;
+    }
+
+    if (
+      /[A-Z]/.test(password)
+    ) {
+      score += 1;
+    }
+
+    if (
+      /[a-z]/.test(password)
+    ) {
+      score += 1;
+    }
+
+    if (
+      /\d/.test(password)
+    ) {
+      score += 1;
+    }
+
+    if (
+      /[^A-Za-z0-9]/.test(password)
+    ) {
+      score += 1;
+    }
+
+    if (score <= 2) {
+      return {
+        label: "Weak",
+        score,
+      };
+    }
+
+    if (score <= 4) {
+      return {
+        label: "Medium",
+        score,
+      };
+    }
+
+    return {
+      label: "Strong",
+      score,
+    };
+  }
+
+  const passwordStrength =
+    getPasswordStrength(
+      newPassword
+    );
+
+  // =========================================================
+  // EMAIL VALIDATION
+  // =========================================================
+
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+      email
+    );
+  }
 
   // =========================================================
   // CHANGE EMAIL
   // =========================================================
 
-  const handleChangeEmail = async () => {
-    const trimmedEmail = newEmail.trim().toLowerCase();
+  const handleChangeEmail =
+    async () => {
+      const trimmedEmail =
+        newEmail
+          .trim()
+          .toLowerCase();
 
-    if (!trimmedEmail) {
-      window.alert("Please enter a new email address.");
-      return;
-    }
+      if (!trimmedEmail) {
+        window.alert(
+          "Please enter a new email address."
+        );
+        return;
+      }
 
-    // The UI is ready for the real backend email-change flow.
-    // Do not show a false success message when no backend handler is connected.
-    if (typeof onChangeEmail !== "function") {
-      window.alert(
-        "Email change is not connected to the backend yet."
+      if (
+        !isValidEmail(
+          trimmedEmail
+        )
+      ) {
+        window.alert(
+          "Please enter a valid email address."
+        );
+        return;
+      }
+
+      if (
+        trimmedEmail ===
+        currentEmail
+          .trim()
+          .toLowerCase()
+      ) {
+        window.alert(
+          "The new email address is the same as your current email address."
+        );
+        return;
+      }
+
+      if (
+        !emailCurrentPassword
+      ) {
+        window.alert(
+          "Please enter your current password to change your email address."
+        );
+        return;
+      }
+
+      if (
+        typeof onChangeEmail !==
+        "function"
+      ) {
+        window.alert(
+          "Email change is not connected to the backend yet."
+        );
+        return;
+      }
+
+      setEmailSubmitting(
+        true
       );
-      return;
-    }
 
-    try {
-      await onChangeEmail(trimmedEmail);
-      setVerificationSent(true);
-    } catch (error) {
-      console.error("Failed to change email:", error);
-      window.alert(
-        error?.message ||
-          "Unable to start the email change process."
+      setVerificationSent(
+        false
       );
-    }
-  };
+
+      try {
+        await onChangeEmail({
+          email: trimmedEmail,
+          currentPassword:
+            emailCurrentPassword,
+        });
+
+        setVerificationSent(
+          true
+        );
+      } catch (error) {
+        console.error(
+          "Failed to change email:",
+          error
+        );
+
+        window.alert(
+          error?.message ||
+            "Unable to start the email change process."
+        );
+      } finally {
+        setEmailSubmitting(
+          false
+        );
+      }
+    };
 
   // =========================================================
   // CHANGE PASSWORD
   // =========================================================
 
-  const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      window.alert("Please complete all password fields.");
-      return;
-    }
+  const handleChangePassword =
+    async () => {
+      if (
+        !currentPassword ||
+        !newPassword ||
+        !confirmPassword
+      ) {
+        window.alert(
+          "Please complete all password fields."
+        );
+        return;
+      }
 
-    if (newPassword !== confirmPassword) {
-      window.alert("The new password and confirmation do not match.");
-      return;
-    }
+      if (
+        newPassword !==
+        confirmPassword
+      ) {
+        window.alert(
+          "The new password and confirmation do not match."
+        );
+        return;
+      }
 
-    // The UI is ready for the real backend password-change flow.
-    // Do not show a false success message when no backend handler is connected.
-    if (typeof onChangePassword !== "function") {
-      window.alert(
-        "Password change is not connected to the backend yet."
+      if (
+        newPassword ===
+        currentPassword
+      ) {
+        window.alert(
+          "Your new password must be different from your current password."
+        );
+        return;
+      }
+
+      if (
+        newPassword.length <
+        8
+      ) {
+        window.alert(
+          "Your new password must contain at least 8 characters."
+        );
+        return;
+      }
+
+      if (
+        typeof onChangePassword !==
+        "function"
+      ) {
+        window.alert(
+          "Password change is not connected to the backend yet."
+        );
+        return;
+      }
+
+      setPasswordSubmitting(
+        true
       );
-      return;
-    }
 
-    try {
-      await onChangePassword({
-        currentPassword,
-        newPassword,
-      });
-      setPasswordUpdated(true);
-    } catch (error) {
-      console.error("Failed to change password:", error);
-      window.alert(
-        error?.message ||
-          "Unable to update the password."
+      setPasswordUpdated(
+        false
       );
-    }
-  };
+
+      try {
+        await onChangePassword({
+          currentPassword,
+          newPassword,
+        });
+
+        setPasswordUpdated(
+          true
+        );
+
+        setCurrentPassword(
+          ""
+        );
+
+        setNewPassword(
+          ""
+        );
+
+        setConfirmPassword(
+          ""
+        );
+
+        setShowCurrentPassword(
+          false
+        );
+
+        setShowNewPassword(
+          false
+        );
+
+        setShowConfirmPassword(
+          false
+        );
+      } catch (error) {
+        console.error(
+          "Failed to change password:",
+          error
+        );
+
+        window.alert(
+          error?.message ||
+            "Unable to update the password."
+        );
+      } finally {
+        setPasswordSubmitting(
+          false
+        );
+      }
+    };
 
   // =========================================================
   // CANCEL EMAIL CHANGE
   // =========================================================
 
-  const cancelEmailChange = () => {
-    setShowEmailForm(false);
-    setNewEmail("");
-    setVerificationSent(false);
-  };
+  const cancelEmailChange =
+    () => {
+      if (
+        emailSubmitting
+      ) {
+        return;
+      }
+
+      setShowEmailForm(
+        false
+      );
+
+      setNewEmail(
+        ""
+      );
+
+      setEmailCurrentPassword(
+        ""
+      );
+
+      setShowEmailCurrentPassword(
+        false
+      );
+
+      setVerificationSent(
+        false
+      );
+    };
 
   // =========================================================
   // CANCEL PASSWORD CHANGE
   // =========================================================
 
-  const cancelPasswordChange = () => {
-    setShowPasswordForm(false);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setPasswordUpdated(false);
-  };
+  const cancelPasswordChange =
+    () => {
+      if (
+        passwordSubmitting
+      ) {
+        return;
+      }
+
+      setShowPasswordForm(
+        false
+      );
+
+      setCurrentPassword(
+        ""
+      );
+
+      setNewPassword(
+        ""
+      );
+
+      setConfirmPassword(
+        ""
+      );
+
+      setShowCurrentPassword(
+        false
+      );
+
+      setShowNewPassword(
+        false
+      );
+
+      setShowConfirmPassword(
+        false
+      );
+
+      setPasswordUpdated(
+        false
+      );
+    };
 
   // =========================================================
   // OPEN DELETE MODAL
   // =========================================================
 
-  const openDeleteModal = () => {
-    setShowDeleteModal(true);
-  };
+  const openDeleteModal =
+    () => {
+      setShowDeleteModal(
+        true
+      );
+    };
 
   // =========================================================
   // CLOSE DELETE MODAL
   // =========================================================
 
-  const closeDeleteModal = () => {
-    if (isDeleting) {
-      return;
-    }
+  const closeDeleteModal =
+    () => {
+      if (isDeleting) {
+        return;
+      }
 
-    setShowDeleteModal(false);
-  };
+      setShowDeleteModal(
+        false
+      );
+    };
 
   // =========================================================
   // DELETE ACCOUNT
   // =========================================================
 
-  const handleDeleteAccount = async () => {
-    if (typeof onDeleteAccount !== "function") {
-      window.alert(
-        "Account deletion is not connected to the backend yet."
+  const handleDeleteAccount =
+    async () => {
+      if (
+        typeof onDeleteAccount !==
+        "function"
+      ) {
+        window.alert(
+          "Account deletion is not connected to the backend yet."
+        );
+        return;
+      }
+
+      setIsDeleting(
+        true
       );
-      return;
-    }
 
-    setIsDeleting(true);
+      try {
+        // App.jsx owns the authenticated session reset.
+        // The Settings page does not clear the session before
+        // the backend operation has succeeded.
 
-    try {
-      // App.jsx owns the authenticated session reset.
-      // Do not clear localStorage here before the backend action completes.
-      await onDeleteAccount();
+        await onDeleteAccount();
 
-      setShowDeleteModal(false);
-    } catch (error) {
-      console.error("Failed to delete account:", error);
-      window.alert(
-        error?.message ||
-          "Unable to delete the account."
-      );
-      setIsDeleting(false);
-    }
-  };
+        setShowDeleteModal(
+          false
+        );
+      } catch (error) {
+        console.error(
+          "Failed to delete account:",
+          error
+        );
+
+        window.alert(
+          error?.message ||
+            "Unable to delete the account."
+        );
+
+        setIsDeleting(
+          false
+        );
+      }
+    };
 
   return (
     <main className="settings-page">
@@ -215,8 +623,14 @@ function SettingsPage({
           </div>
 
           <div>
-            <h2>Account &amp; Security</h2>
-            <p>Manage your account email and password.</p>
+            <h2>
+              Account &amp; Security
+            </h2>
+
+            <p>
+              Manage your account email
+              and password.
+            </p>
           </div>
         </div>
 
@@ -232,9 +646,13 @@ function SettingsPage({
               </div>
 
               <div>
-                <h3>Email &amp; Verification</h3>
+                <h3>
+                  Email &amp; Verification
+                </h3>
+
                 <p>
-                  Manage your email address and verification status.
+                  Manage your email address
+                  and verification status.
                 </p>
               </div>
             </div>
@@ -242,17 +660,39 @@ function SettingsPage({
             <button
               type="button"
               className="collapse-button"
-              onClick={() => setShowEmailForm(!showEmailForm)}
+              onClick={() => {
+                if (
+                  emailSubmitting
+                ) {
+                  return;
+                }
+
+                setShowEmailForm(
+                  (current) =>
+                    !current
+                );
+
+                setVerificationSent(
+                  false
+                );
+              }}
               aria-label={
                 showEmailForm
                   ? "Collapse email section"
                   : "Expand email section"
               }
+              disabled={
+                emailSubmitting
+              }
             >
               {showEmailForm ? (
-                <ChevronUp size={20} />
+                <ChevronUp
+                  size={20}
+                />
               ) : (
-                <ChevronDown size={20} />
+                <ChevronDown
+                  size={20}
+                />
               )}
             </button>
           </div>
@@ -261,16 +701,28 @@ function SettingsPage({
 
           <div className="current-email-box">
             <div>
-              <span className="field-label">Current Email</span>
-              <strong>{currentEmail}</strong>
+              <span className="field-label">
+                Current Email
+              </span>
+
+              <strong>
+                {currentEmail}
+              </strong>
             </div>
 
             <div className="verification-status">
-              <CheckCircle2 size={20} />
+              <CheckCircle2
+                size={20}
+              />
 
               <div>
-                <strong>Email Verified</strong>
-                <span>Your email address is verified.</span>
+                <strong>
+                  {getEmailVerificationLabel()}
+                </strong>
+
+                <span>
+                  {getEmailVerificationDescription()}
+                </span>
               </div>
             </div>
 
@@ -278,11 +730,20 @@ function SettingsPage({
               type="button"
               className="primary-action-button"
               onClick={() => {
-                setShowEmailForm(true);
-                setVerificationSent(false);
+                setShowEmailForm(
+                  true
+                );
+
+                setVerificationSent(
+                  false
+                );
               }}
+              disabled={
+                emailSubmitting
+              }
             >
               <Pencil size={16} />
+
               Change Email
             </button>
           </div>
@@ -297,16 +758,24 @@ function SettingsPage({
                 </div>
 
                 <div>
-                  <h4>Change Email</h4>
+                  <h4>
+                    Change Email
+                  </h4>
+
                   <p>
-                    Enter your new email address and we'll send a
-                    verification link.
+                    Enter your new email
+                    address and current
+                    password to continue.
                   </p>
                 </div>
               </div>
 
+              {/* NEW EMAIL */}
+
               <div className="form-group">
-                <label>New Email Address</label>
+                <label>
+                  New Email Address
+                </label>
 
                 <div className="input-wrapper">
                   <Mail size={17} />
@@ -314,34 +783,124 @@ function SettingsPage({
                   <input
                     type="email"
                     placeholder="Enter new email address"
-                    value={newEmail}
+                    value={
+                      newEmail
+                    }
                     onChange={(e) => {
-                      setNewEmail(e.target.value);
-                      setVerificationSent(false);
+                      setNewEmail(
+                        e.target.value
+                      );
+
+                      setVerificationSent(
+                        false
+                      );
                     }}
+                    disabled={
+                      emailSubmitting
+                    }
+                    autoComplete="email"
                   />
                 </div>
               </div>
 
+              {/* CURRENT PASSWORD */}
+
+              <div className="form-group">
+                <label>
+                  Current Password
+                </label>
+
+                <div className="input-wrapper">
+                  <Lock size={17} />
+
+                  <input
+                    type={
+                      showEmailCurrentPassword
+                        ? "text"
+                        : "password"
+                    }
+                    placeholder="Enter your current password"
+                    value={
+                      emailCurrentPassword
+                    }
+                    onChange={(e) =>
+                      setEmailCurrentPassword(
+                        e.target.value
+                      )
+                    }
+                    disabled={
+                      emailSubmitting
+                    }
+                    autoComplete="current-password"
+                  />
+
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() =>
+                      setShowEmailCurrentPassword(
+                        (current) =>
+                          !current
+                      )
+                    }
+                    disabled={
+                      emailSubmitting
+                    }
+                    aria-label={
+                      showEmailCurrentPassword
+                        ? "Hide current password"
+                        : "Show current password"
+                    }
+                  >
+                    {showEmailCurrentPassword ? (
+                      <EyeOff
+                        size={17}
+                      />
+                    ) : (
+                      <Eye
+                        size={17}
+                      />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* SUCCESS MESSAGE */}
+
               {verificationSent && (
                 <div className="success-message">
-                  <CheckCircle2 size={19} />
+                  <CheckCircle2
+                    size={19}
+                  />
 
                   <div>
-                    <strong>Verification email sent!</strong>
+                    <strong>
+                      Email change request completed
+                    </strong>
+
                     <span>
-                      Check your new email address and click the
-                      verification link to complete the email change.
+                      Your email-change handler
+                      completed successfully.
+                      Follow any verification
+                      instructions provided by
+                      the account system.
                     </span>
                   </div>
                 </div>
               )}
 
+              {/* ACTIONS */}
+
               <div className="form-actions">
                 <button
                   type="button"
                   className="cancel-button"
-                  onClick={cancelEmailChange}
+                  onClick={
+                    cancelEmailChange
+                  }
+                  disabled={
+                    emailSubmitting
+                  }
                 >
                   Cancel
                 </button>
@@ -349,10 +908,18 @@ function SettingsPage({
                 <button
                   type="button"
                   className="primary-action-button"
-                  onClick={handleChangeEmail}
+                  onClick={
+                    handleChangeEmail
+                  }
+                  disabled={
+                    emailSubmitting
+                  }
                 >
                   <Send size={16} />
-                  Send Verification Email
+
+                  {emailSubmitting
+                    ? "Updating..."
+                    : "Change Email"}
                 </button>
               </div>
             </div>
@@ -371,9 +938,13 @@ function SettingsPage({
               </div>
 
               <div>
-                <h3>Password</h3>
+                <h3>
+                  Password
+                </h3>
+
                 <p>
-                  Keep your account secure with a strong password.
+                  Keep your account secure
+                  with a strong password.
                 </p>
               </div>
             </div>
@@ -382,19 +953,38 @@ function SettingsPage({
               type="button"
               className="collapse-button"
               onClick={() => {
-                setShowPasswordForm(!showPasswordForm);
-                setPasswordUpdated(false);
+                if (
+                  passwordSubmitting
+                ) {
+                  return;
+                }
+
+                setShowPasswordForm(
+                  (current) =>
+                    !current
+                );
+
+                setPasswordUpdated(
+                  false
+                );
               }}
               aria-label={
                 showPasswordForm
                   ? "Collapse password section"
                   : "Expand password section"
               }
+              disabled={
+                passwordSubmitting
+              }
             >
               {showPasswordForm ? (
-                <ChevronUp size={20} />
+                <ChevronUp
+                  size={20}
+                />
               ) : (
-                <ChevronDown size={20} />
+                <ChevronDown
+                  size={20}
+                />
               )}
             </button>
           </div>
@@ -409,9 +999,13 @@ function SettingsPage({
                 </div>
 
                 <div>
-                  <h4>Change Password</h4>
+                  <h4>
+                    Change Password
+                  </h4>
+
                   <p>
-                    Enter your current password and choose a new password.
+                    Enter your current password
+                    and choose a new password.
                   </p>
                 </div>
               </div>
@@ -420,26 +1014,49 @@ function SettingsPage({
                 {/* CURRENT PASSWORD */}
 
                 <div className="form-group">
-                  <label>Current Password</label>
+                  <label>
+                    Current Password
+                  </label>
 
                   <div className="input-wrapper">
                     <Lock size={17} />
 
                     <input
-                      type={showCurrentPassword ? "text" : "password"}
+                      type={
+                        showCurrentPassword
+                          ? "text"
+                          : "password"
+                      }
                       placeholder="Enter current password"
-                      value={currentPassword}
+                      value={
+                        currentPassword
+                      }
                       onChange={(e) => {
-                        setCurrentPassword(e.target.value);
-                        setPasswordUpdated(false);
+                        setCurrentPassword(
+                          e.target.value
+                        );
+
+                        setPasswordUpdated(
+                          false
+                        );
                       }}
+                      disabled={
+                        passwordSubmitting
+                      }
+                      autoComplete="current-password"
                     />
 
                     <button
                       type="button"
                       className="password-toggle"
                       onClick={() =>
-                        setShowCurrentPassword(!showCurrentPassword)
+                        setShowCurrentPassword(
+                          (current) =>
+                            !current
+                        )
+                      }
+                      disabled={
+                        passwordSubmitting
                       }
                       aria-label={
                         showCurrentPassword
@@ -448,9 +1065,13 @@ function SettingsPage({
                       }
                     >
                       {showCurrentPassword ? (
-                        <EyeOff size={17} />
+                        <EyeOff
+                          size={17}
+                        />
                       ) : (
-                        <Eye size={17} />
+                        <Eye
+                          size={17}
+                        />
                       )}
                     </button>
                   </div>
@@ -459,25 +1080,50 @@ function SettingsPage({
                 {/* NEW PASSWORD */}
 
                 <div className="form-group">
-                  <label>New Password</label>
+                  <label>
+                    New Password
+                  </label>
 
                   <div className="input-wrapper">
                     <Lock size={17} />
 
                     <input
-                      type={showNewPassword ? "text" : "password"}
+                      type={
+                        showNewPassword
+                          ? "text"
+                          : "password"
+                      }
                       placeholder="Enter new password"
-                      value={newPassword}
+                      value={
+                        newPassword
+                      }
                       onChange={(e) => {
-                        setNewPassword(e.target.value);
-                        setPasswordUpdated(false);
+                        setNewPassword(
+                          e.target.value
+                        );
+
+                        setPasswordUpdated(
+                          false
+                        );
                       }}
+                      disabled={
+                        passwordSubmitting
+                      }
+                      autoComplete="new-password"
                     />
 
                     <button
                       type="button"
                       className="password-toggle"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      onClick={() =>
+                        setShowNewPassword(
+                          (current) =>
+                            !current
+                        )
+                      }
+                      disabled={
+                        passwordSubmitting
+                      }
                       aria-label={
                         showNewPassword
                           ? "Hide new password"
@@ -485,37 +1131,73 @@ function SettingsPage({
                       }
                     >
                       {showNewPassword ? (
-                        <EyeOff size={17} />
+                        <EyeOff
+                          size={17}
+                        />
                       ) : (
-                        <Eye size={17} />
+                        <Eye
+                          size={17}
+                        />
                       )}
                     </button>
                   </div>
+
+                  {newPassword && (
+                    <span className="password-strength">
+                      Strength:{" "}
+                      {
+                        passwordStrength.label
+                      }
+                    </span>
+                  )}
                 </div>
 
                 {/* CONFIRM PASSWORD */}
 
                 <div className="form-group">
-                  <label>Confirm New Password</label>
+                  <label>
+                    Confirm New Password
+                  </label>
 
                   <div className="input-wrapper">
                     <Lock size={17} />
 
                     <input
-                      type={showConfirmPassword ? "text" : "password"}
+                      type={
+                        showConfirmPassword
+                          ? "text"
+                          : "password"
+                      }
                       placeholder="Confirm new password"
-                      value={confirmPassword}
+                      value={
+                        confirmPassword
+                      }
                       onChange={(e) => {
-                        setConfirmPassword(e.target.value);
-                        setPasswordUpdated(false);
+                        setConfirmPassword(
+                          e.target.value
+                        );
+
+                        setPasswordUpdated(
+                          false
+                        );
                       }}
+                      disabled={
+                        passwordSubmitting
+                      }
+                      autoComplete="new-password"
                     />
 
                     <button
                       type="button"
                       className="password-toggle"
                       onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
+                        setShowConfirmPassword(
+                          (current) =>
+                            !current
+                        )
+                      }
+                      disabled={
+                        passwordSubmitting
                       }
                       aria-label={
                         showConfirmPassword
@@ -524,37 +1206,60 @@ function SettingsPage({
                       }
                     >
                       {showConfirmPassword ? (
-                        <EyeOff size={17} />
+                        <EyeOff
+                          size={17}
+                        />
                       ) : (
-                        <Eye size={17} />
+                        <Eye
+                          size={17}
+                        />
                       )}
                     </button>
                   </div>
+
+                  {confirmPassword &&
+                    newPassword !==
+                      confirmPassword && (
+                      <span className="password-mismatch">
+                        Passwords do not match.
+                      </span>
+                    )}
                 </div>
               </div>
 
-              {/* PASSWORD SUCCESS MESSAGE */}
+              {/* SUCCESS MESSAGE */}
 
               {passwordUpdated && (
                 <div className="success-message">
-                  <CheckCircle2 size={19} />
+                  <CheckCircle2
+                    size={19}
+                  />
 
                   <div>
-                    <strong>Password updated successfully!</strong>
+                    <strong>
+                      Password updated successfully!
+                    </strong>
+
                     <span>
-                      Your account password has been changed.
+                      Your account password has
+                      been changed.
                     </span>
                   </div>
                 </div>
               )}
 
-              {/* FORM ACTIONS */}
+              {/* ACTIONS */}
 
               <div className="form-actions">
                 <button
                   type="button"
                   className="cancel-button"
-                  onClick={cancelPasswordChange}
+                  onClick={
+                    cancelPasswordChange
+                  }
+                  disabled={
+                    passwordSubmitting
+                  }
                 >
                   Cancel
                 </button>
@@ -562,10 +1267,18 @@ function SettingsPage({
                 <button
                   type="button"
                   className="primary-action-button"
-                  onClick={handleChangePassword}
+                  onClick={
+                    handleChangePassword
+                  }
+                  disabled={
+                    passwordSubmitting
+                  }
                 >
                   <Lock size={16} />
-                  Update Password
+
+                  {passwordSubmitting
+                    ? "Updating..."
+                    : "Update Password"}
                 </button>
               </div>
             </div>
@@ -573,16 +1286,20 @@ function SettingsPage({
         </div>
 
         {/* ===================================================
-            DELETE ACCOUNT BUTTON
+            DELETE ACCOUNT
         =================================================== */}
 
         <div className="delete-account-wrapper">
           <button
             type="button"
             className="delete-account-button"
-            onClick={openDeleteModal}
+            onClick={
+              openDeleteModal
+            }
+            disabled={isDeleting}
           >
             <Trash2 size={17} />
+
             Delete Account
           </button>
         </div>
@@ -595,11 +1312,15 @@ function SettingsPage({
       {showDeleteModal && (
         <div
           className="delete-modal-overlay"
-          onMouseDown={closeDeleteModal}
+          onMouseDown={
+            closeDeleteModal
+          }
         >
           <div
             className="delete-modal"
-            onMouseDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) =>
+              e.stopPropagation()
+            }
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-account-title"
@@ -607,15 +1328,21 @@ function SettingsPage({
             <button
               type="button"
               className="delete-modal-close"
-              onClick={closeDeleteModal}
-              disabled={isDeleting}
+              onClick={
+                closeDeleteModal
+              }
+              disabled={
+                isDeleting
+              }
               aria-label="Close"
             >
               <X size={18} />
             </button>
 
             <div className="delete-modal-icon">
-              <AlertTriangle size={23} />
+              <AlertTriangle
+                size={23}
+              />
             </div>
 
             <h3 id="delete-account-title">
@@ -623,19 +1350,25 @@ function SettingsPage({
             </h3>
 
             <p>
-              Are you sure you want to delete your account?
+              Are you sure you want
+              to delete your account?
             </p>
 
             <span className="delete-modal-warning">
-              This action cannot be undone.
+              This action cannot be
+              undone.
             </span>
 
             <div className="delete-modal-actions">
               <button
                 type="button"
                 className="delete-modal-cancel"
-                onClick={closeDeleteModal}
-                disabled={isDeleting}
+                onClick={
+                  closeDeleteModal
+                }
+                disabled={
+                  isDeleting
+                }
               >
                 Cancel
               </button>
@@ -643,11 +1376,20 @@ function SettingsPage({
               <button
                 type="button"
                 className="delete-modal-confirm"
-                onClick={handleDeleteAccount}
-                disabled={isDeleting}
+                onClick={
+                  handleDeleteAccount
+                }
+                disabled={
+                  isDeleting
+                }
               >
-                <Trash2 size={15} />
-                {isDeleting ? "Deleting..." : "Delete"}
+                <Trash2
+                  size={15}
+                />
+
+                {isDeleting
+                  ? "Deleting..."
+                  : "Delete"}
               </button>
             </div>
           </div>

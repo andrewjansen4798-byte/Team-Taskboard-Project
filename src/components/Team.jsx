@@ -1,29 +1,31 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import "./Team.css";
+
+// =========================================================
+// MEMBER PRESENCE
+// =========================================================
+function getMemberPresence(member) {
+  const userId =
+    member?.userId ??
+    member?.user?._id ??
+    member?.user?.id ??
+    null;
+
+  return userId ? "Online Member" : "Offline Member";
+}
 
 function Team({
   workspaceName = "Data Science Team",
   workspaceCode: workspaceCodeProp = null,
-
-  // =========================================================
-  // SHARED MEMBER DATA FROM APP.JSX
-  // =========================================================
-
   members = [],
   currentUser = null,
-
-  // =========================================================
-  // MEMBER ACTIONS FROM APP.JSX
-  // =========================================================
-
   onAddMember,
   onUpdateMember,
   onDeleteMember,
 }) {
-  /* =========================================================
-     SAFE LOCAL STORAGE HELPERS
-  ========================================================= */
-
+  // =========================================================
+  // SAFE LOCAL STORAGE HELPERS
+  // =========================================================
   function getStoredWorkspaceCode() {
     try {
       return (
@@ -34,50 +36,48 @@ function Team({
         "Unable to read workspace code from localStorage:",
         error
       );
-
       return "";
     }
   }
 
-  /* =========================================================
-     WORKSPACE CODE
-     
-     Prefer a workspaceCode prop when App.jsx provides one.
-     Otherwise fall back to localStorage.
-  ========================================================= */
-
+  // =========================================================
+  // WORKSPACE CODE
+  // =========================================================
   const workspaceCode =
     typeof workspaceCodeProp === "string" &&
     workspaceCodeProp.trim()
       ? workspaceCodeProp.trim()
       : getStoredWorkspaceCode() || "------";
 
-  /* =========================================================
-     STATES
-  ========================================================= */
+  // =========================================================
+  // STATES
+  // =========================================================
+  const [showMemberForm, setShowMemberForm] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState(null);
+  const [editingMember, setEditingMember] = useState(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [codeCopied, setCodeCopied] = useState(false);
 
-  const [showMemberForm, setShowMemberForm] =
-    useState(false);
+  // =========================================================
+  // FORM DATA
+  // =========================================================
+  const [formData, setFormData] = useState({
+    name: "",
+    age: "",
+    gender: "",
+    projectRole: "",
+    currentJob: "",
+    email: "",
+    phone: "",
+    location: "",
+    timeZone: "",
+    bio: "",
+  });
 
-  const [selectedMemberId, setSelectedMemberId] =
-    useState(null);
-
-  const [editingMember, setEditingMember] =
-    useState(null);
-
-  const [isEditingProfile, setIsEditingProfile] =
-    useState(false);
-
-  const [searchTerm, setSearchTerm] =
-    useState("");
-
-  const [codeCopied, setCodeCopied] =
-    useState(false);
-
-  /* =========================================================
-     ROLE HELPERS
-  ========================================================= */
-
+  // =========================================================
+  // ROLE HELPERS
+  // =========================================================
   function normalizeRole(role) {
     return String(role || "")
       .trim()
@@ -86,26 +86,42 @@ function Team({
   }
 
   function isLeaderRole(role) {
-    const normalizedRole = normalizeRole(role);
+    const normalized = normalizeRole(role);
 
     return (
-      normalizedRole === "leader" ||
-      normalizedRole === "team leader"
+      normalized === "leader" ||
+      normalized === "team leader"
     );
   }
 
-  /* =========================================================
-     MEMBER ID HELPER
-  ========================================================= */
-
-  function getMemberId(member) {
+  // =========================================================
+  // MEMBERSHIP ID
+  // This identifies the workspace membership record.
+  // Do not use the User ID for workspace member edit/delete.
+  // =========================================================
+  function getMembershipId(member) {
     if (!member) {
       return null;
     }
 
     return (
-      member.id ??
-      member._id ??
+      member.membershipId ??
+      member.membership?._id ??
+      member.membership?.id ??
+      null
+    );
+  }
+
+  // =========================================================
+  // USER ID
+  // Offline members do not have a registered User ID.
+  // =========================================================
+  function getUserId(member) {
+    if (!member) {
+      return null;
+    }
+
+    return (
       member.userId ??
       member.user?._id ??
       member.user?.id ??
@@ -113,35 +129,56 @@ function Team({
     );
   }
 
-  /* =========================================================
-     FIND CURRENT USER'S MEMBER RECORD
-  ========================================================= */
-
+  // =========================================================
+  // FIND CURRENT USER'S MEMBER RECORD
+  // =========================================================
   const currentUserMember = useMemo(() => {
-    if (!Array.isArray(members) || !members.length) {
+    if (!Array.isArray(members) || members.length === 0) {
       return null;
     }
 
-    if (currentUser) {
-      const currentUserId = getMemberId(currentUser);
+    const userId =
+      getUserId(currentUser) ??
+      currentUser?.id ??
+      currentUser?._id ??
+      null;
 
-      if (currentUserId !== null && currentUserId !== undefined) {
-        const matchingMember = members.find((member) => {
-          const memberId = getMemberId(member);
+    const email = String(currentUser?.email || "")
+      .trim()
+      .toLowerCase();
 
-          return (
-            memberId !== null &&
-            memberId !== undefined &&
-            String(memberId) === String(currentUserId)
-          );
-        });
+    // Match by registered account ID.
+    if (userId !== null && userId !== undefined) {
+      const byUserId = members.find((member) => {
+        const memberUserId = getUserId(member);
 
-        if (matchingMember) {
-          return matchingMember;
-        }
+        return (
+          memberUserId !== null &&
+          memberUserId !== undefined &&
+          String(memberUserId) === String(userId)
+        );
+      });
+
+      if (byUserId) {
+        return byUserId;
       }
     }
 
+    // Match by email.
+    if (email) {
+      const byEmail = members.find(
+        (member) =>
+          String(member?.email || "")
+            .trim()
+            .toLowerCase() === email
+      );
+
+      if (byEmail) {
+        return byEmail;
+      }
+    }
+
+    // Fallback for an explicitly marked current user.
     return (
       members.find(
         (member) => member?.isCurrentUser === true
@@ -149,13 +186,11 @@ function Team({
     );
   }, [members, currentUser]);
 
-  /* =========================================================
-     CURRENT USER / ROLE
-
-     Merge account-level information with the workspace member
-     record so workspace-specific role/profile fields are not lost.
-  ========================================================= */
-
+  // =========================================================
+  // CURRENT USER
+  // Merge account-level data with workspace-specific data.
+  // Workspace role and status remain workspace-scoped.
+  // =========================================================
   const activeCurrentUser = useMemo(() => {
     if (!currentUser && !currentUserMember) {
       return null;
@@ -170,63 +205,135 @@ function Team({
     }
 
     return {
-      ...currentUserMember,
       ...currentUser,
+      ...currentUserMember,
+
+      id:
+        currentUserMember.id ??
+        currentUser.id ??
+        currentUser._id,
+
+      _id:
+        currentUserMember._id ??
+        currentUser._id ??
+        currentUser.id,
+
+      membershipId:
+        currentUserMember.membershipId ??
+        null,
+
+      userId:
+        currentUserMember.userId ??
+        currentUser.id ??
+        currentUser._id ??
+        null,
 
       role:
+        currentUserMember.role ??
+        currentUserMember.workspaceRole ??
         currentUser.role ??
-        currentUserMember.role,
+        "Member",
 
-      projectRole:
-        currentUser.projectRole ??
-        currentUserMember.projectRole,
+      workspaceRole:
+        currentUserMember.workspaceRole ??
+        currentUser.workspaceRole ??
+        null,
 
-      currentJob:
-        currentUser.currentJob ??
-        currentUserMember.currentJob,
+      accountStatus:
+        currentUserMember.accountStatus ??
+        currentUser.accountStatus ??
+        null,
 
-      joined:
-        currentUser.joined ??
-        currentUserMember.joined,
-
-      status:
-        currentUser.status ??
-        currentUserMember.status,
-
-      bio:
-        currentUser.bio ??
-        currentUserMember.bio,
-
-      age:
-        currentUser.age ??
-        currentUserMember.age,
-
-      gender:
-        currentUser.gender ??
-        currentUserMember.gender,
-
-      email:
-        currentUser.email ??
-        currentUserMember.email,
+      membershipStatus:
+        currentUserMember.membershipStatus ??
+        currentUser.membershipStatus ??
+        null,
 
       name:
+        currentUserMember.name ??
         currentUser.name ??
-        currentUserMember.name,
+        "",
+
+      email:
+        currentUserMember.email ??
+        currentUser.email ??
+        "",
+
+      age:
+        currentUserMember.age ??
+        currentUser.age ??
+        "",
+
+      gender:
+        currentUserMember.gender ??
+        currentUser.gender ??
+        "",
+
+      projectRole:
+        currentUserMember.projectRole ??
+        currentUser.projectRole ??
+        "",
+
+      currentJob:
+        currentUserMember.currentJob ??
+        currentUser.currentJob ??
+        "",
+
+      phone:
+        currentUserMember.phone ??
+        currentUser.phone ??
+        "",
+
+      location:
+        currentUserMember.location ??
+        currentUser.location ??
+        "",
+
+      timeZone:
+        currentUserMember.timeZone ??
+        currentUser.timeZone ??
+        "",
+
+      bio:
+        currentUserMember.bio ??
+        currentUser.bio ??
+        "",
+
+      joined:
+        currentUserMember.joined ??
+        currentUser.joined ??
+        "",
+
+      joinedAt:
+        currentUserMember.joinedAt ??
+        currentUser.joinedAt ??
+        null,
+
+      status:
+        currentUserMember.status ??
+        currentUser.status ??
+        "Active",
     };
   }, [currentUser, currentUserMember]);
 
-  const isTeamLeader = isLeaderRole(
-    activeCurrentUser?.role
-  );
+  // =========================================================
+  // CURRENT USER ROLE
+  // =========================================================
+  const isTeamLeader =
+    isLeaderRole(activeCurrentUser?.role) ||
+    isLeaderRole(activeCurrentUser?.workspaceRole);
 
-  const currentUserId = getMemberId(
-    activeCurrentUser
-  );
+  const activeUserId = getUserId(activeCurrentUser);
 
-  /* =========================================================
-     CHECK WHETHER MEMBER IS CURRENT USER
-  ========================================================= */
+  const activeUserEmail = String(
+    activeCurrentUser?.email || ""
+  )
+    .trim()
+    .toLowerCase();
 
+  // =========================================================
+  // CHECK WHETHER MEMBER IS CURRENT USER
+  // =========================================================
   function isCurrentUserMember(member) {
     if (!member) {
       return false;
@@ -236,36 +343,44 @@ function Team({
       return true;
     }
 
-    const memberId = getMemberId(member);
+    const memberUserId = getUserId(member);
 
+    // Match by registered account ID.
     if (
-      currentUserId === null ||
-      currentUserId === undefined ||
-      memberId === null ||
-      memberId === undefined
+      activeUserId !== null &&
+      activeUserId !== undefined &&
+      memberUserId !== null &&
+      memberUserId !== undefined
     ) {
-      return false;
+      if (String(activeUserId) === String(memberUserId)) {
+        return true;
+      }
     }
 
-    return (
-      String(memberId) === String(currentUserId)
+    // Match by email.
+    const memberEmail = String(member?.email || "")
+      .trim()
+      .toLowerCase();
+
+    return Boolean(
+      activeUserEmail &&
+      memberEmail &&
+      activeUserEmail === memberEmail
     );
   }
 
-  /* =========================================================
-     DISPLAY HELPERS
-  ========================================================= */
-
+  // =========================================================
+  // DISPLAY HELPERS
+  // =========================================================
   function getMemberName(member) {
-    const name = String(member?.name || "").trim();
-
-    return name || "Unnamed Member";
+    return (
+      String(member?.name || "").trim() ||
+      "Unnamed Member"
+    );
   }
 
   function getMemberInitials(member) {
-    const name = getMemberName(member);
-
-    const initials = name
+    const initials = getMemberName(member)
       .split(/\s+/)
       .filter(Boolean)
       .map((word) => word[0])
@@ -277,34 +392,106 @@ function Team({
   }
 
   function getMemberRole(member) {
-    return member?.role || "Member";
+    return (
+      member?.role ||
+      member?.workspaceRole ||
+      "Member"
+    );
   }
 
   function getMemberProjectRole(member) {
     return member?.projectRole || "Not provided";
   }
 
-  function getMemberStatus(member) {
-    return member?.status || "Active";
-  }
-
-  function getMemberJoined(member) {
-    return member?.joined || "Recently";
-  }
-
-  function getMemberKey(member, index) {
-    const memberId = getMemberId(member);
+  // =========================================================
+  // ACCOUNT STATUS
+  // Active means a registered CollabBoard account.
+  // Non-Active means an offline member without an account.
+  // =========================================================
+  function getAccountStatus(member) {
+    const normalized = String(
+      member?.accountStatus ??
+      member?.memberStatus ??
+      ""
+    )
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-");
 
     if (
-      memberId !== null &&
-      memberId !== undefined
+      normalized === "non-active" ||
+      normalized === "nonactive"
     ) {
-      return String(memberId);
+      return "Non-Active";
     }
 
-    const email = String(
-      member?.email || ""
+    if (normalized === "active") {
+      return "Active";
+    }
+
+    return getUserId(member) ? "Active" : "Non-Active";
+  }
+
+  // =========================================================
+  // MEMBERSHIP STATUS
+  // =========================================================
+  function getMembershipStatus(member) {
+    const normalized = String(
+      member?.membershipStatus ??
+      member?.membership?.status ??
+      member?.status ??
+      ""
     )
+      .trim()
+      .toLowerCase();
+
+    return normalized === "inactive"
+      ? "Inactive"
+      : "Active";
+  }
+
+  // =========================================================
+  // JOIN DATE
+  // =========================================================
+  function getMemberJoined(member) {
+    if (member?.joined) {
+      return member.joined;
+    }
+
+    if (member?.joinedAt) {
+      return new Date(member.joinedAt).toLocaleDateString(
+        "en-US",
+        {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }
+      );
+    }
+
+    return "Recently";
+  }
+
+  // =========================================================
+  // MEMBER KEY
+  // =========================================================
+  function getMemberKey(member, index) {
+    const membershipId = getMembershipId(member);
+
+    if (
+      membershipId !== null &&
+      membershipId !== undefined
+    ) {
+      return String(membershipId);
+    }
+
+    const userId = getUserId(member);
+
+    if (userId !== null && userId !== undefined) {
+      return `user-${String(userId)}`;
+    }
+
+    const email = String(member?.email || "")
       .trim()
       .toLowerCase();
 
@@ -315,12 +502,9 @@ function Team({
     return `member-${index}`;
   }
 
-  /* =========================================================
-     SELECTED MEMBER
-
-     Never resolve a member when there is no selected ID.
-  ========================================================= */
-
+  // =========================================================
+  // SELECTED MEMBER
+  // =========================================================
   const selectedMember = useMemo(() => {
     if (
       selectedMemberId === null ||
@@ -331,41 +515,21 @@ function Team({
 
     return (
       members.find((member) => {
-        const memberId = getMemberId(member);
-
-        if (
-          memberId === null ||
-          memberId === undefined
-        ) {
-          return false;
-        }
+        const membershipId = getMembershipId(member);
 
         return (
-          String(memberId) ===
-          String(selectedMemberId)
+          membershipId !== null &&
+          membershipId !== undefined &&
+          String(membershipId) ===
+            String(selectedMemberId)
         );
       }) || null
     );
   }, [members, selectedMemberId]);
 
-  /* =========================================================
-     FORM DATA
-  ========================================================= */
-
-  const [formData, setFormData] = useState({
-    name: "",
-    age: "",
-    gender: "",
-    projectRole: "",
-    currentJob: "",
-    email: "",
-    bio: "",
-  });
-
-  /* =========================================================
-     RESET FORM
-  ========================================================= */
-
+  // =========================================================
+  // RESET FORM
+  // =========================================================
   function resetForm() {
     setFormData({
       name: "",
@@ -374,19 +538,18 @@ function Team({
       projectRole: "",
       currentJob: "",
       email: "",
+      phone: "",
+      location: "",
+      timeZone: "",
       bio: "",
     });
   }
 
-  /* =========================================================
-     INPUT CHANGE
-  ========================================================= */
-
+  // =========================================================
+  // INPUT CHANGE
+  // =========================================================
   function handleInputChange(e) {
-    const {
-      name,
-      value,
-    } = e.target;
+    const { name, value } = e.target;
 
     setFormData((current) => ({
       ...current,
@@ -394,10 +557,9 @@ function Team({
     }));
   }
 
-  /* =========================================================
-     NORMALIZE FORM DATA
-  ========================================================= */
-
+  // =========================================================
+  // NORMALIZE PROFILE DATA
+  // =========================================================
   function buildNormalizedProfileData() {
     const normalizedAge =
       formData.age === ""
@@ -406,24 +568,28 @@ function Team({
 
     return {
       name: formData.name.trim(),
+
       age:
         normalizedAge === "" ||
         Number.isNaN(normalizedAge)
           ? ""
           : normalizedAge,
+
       gender: formData.gender,
       projectRole: formData.projectRole.trim(),
       currentJob: formData.currentJob.trim(),
-      email: formData.email.trim(),
+      email: formData.email.trim().toLowerCase(),
+      phone: formData.phone.trim(),
+      location: formData.location.trim(),
+      timeZone: formData.timeZone.trim(),
       bio: formData.bio.trim(),
     };
   }
 
-  /* =========================================================
-     OPEN ADD MEMBER
-     TEAM LEADER ONLY
-  ========================================================= */
-
+  // =========================================================
+  // OPEN ADD MEMBER
+  // TEAM LEADER ONLY
+  // =========================================================
   function handleOpenAddMember() {
     if (!isTeamLeader) {
       return;
@@ -436,17 +602,13 @@ function Team({
     setShowMemberForm(true);
   }
 
-  /* =========================================================
-     OPEN EDIT MEMBER
-     TEAM LEADER ONLY FOR OTHER MEMBERS
-  ========================================================= */
-
+  // =========================================================
+  // OPEN EDIT MEMBER
+  // TEAM LEADER ONLY FOR OTHER MEMBERS
+  // =========================================================
   function handleOpenEditMember(member) {
-    if (!isTeamLeader) {
-      return;
-    }
-
     if (
+      !isTeamLeader ||
       !member ||
       isCurrentUserMember(member)
     ) {
@@ -459,59 +621,64 @@ function Team({
 
     setFormData({
       name: member?.name || "",
+
       age:
         member?.age === null ||
         member?.age === undefined
           ? ""
           : member.age,
+
       gender: member?.gender || "",
       projectRole: member?.projectRole || "",
       currentJob: member?.currentJob || "",
       email: member?.email || "",
+      phone: member?.phone || "",
+      location: member?.location || "",
+      timeZone: member?.timeZone || "",
       bio: member?.bio || "",
     });
 
     setShowMemberForm(true);
   }
 
-  /* =========================================================
-     EDIT MY PROFILE
-     ALL USERS
-  ========================================================= */
-
+  // =========================================================
+  // EDIT MY PROFILE
+  // ALL USERS
+  // =========================================================
   function handleEditMyProfile() {
     if (!activeCurrentUser) {
       return;
     }
 
     setEditingMember(null);
+    setIsEditingProfile(true);
+    setSelectedMemberId(null);
 
     setFormData({
       name: activeCurrentUser?.name || "",
+
       age:
         activeCurrentUser?.age === null ||
         activeCurrentUser?.age === undefined
           ? ""
           : activeCurrentUser.age,
+
       gender: activeCurrentUser?.gender || "",
-      projectRole:
-        activeCurrentUser?.projectRole || "",
-      currentJob:
-        activeCurrentUser?.currentJob || "",
-      email:
-        activeCurrentUser?.email || "",
+      projectRole: activeCurrentUser?.projectRole || "",
+      currentJob: activeCurrentUser?.currentJob || "",
+      email: activeCurrentUser?.email || "",
+      phone: activeCurrentUser?.phone || "",
+      location: activeCurrentUser?.location || "",
+      timeZone: activeCurrentUser?.timeZone || "",
       bio: activeCurrentUser?.bio || "",
     });
 
-    setIsEditingProfile(true);
-    setSelectedMemberId(null);
     setShowMemberForm(true);
   }
 
-  /* =========================================================
-     CLOSE MEMBER FORM
-  ========================================================= */
-
+  // =========================================================
+  // CLOSE MEMBER MODAL
+  // =========================================================
   function closeMemberModal() {
     setShowMemberForm(false);
     setIsEditingProfile(false);
@@ -519,19 +686,14 @@ function Team({
     resetForm();
   }
 
-  /* =========================================================
-     VALIDATE FORM
-  ========================================================= */
-
+  // =========================================================
+  // FORM VALIDATION
+  // =========================================================
   function isValidMemberForm() {
     const name = formData.name.trim();
     const email = formData.email.trim();
 
-    if (!name) {
-      return false;
-    }
-
-    if (!email) {
+    if (!name || !email) {
       return false;
     }
 
@@ -549,10 +711,9 @@ function Team({
     return true;
   }
 
-  /* =========================================================
-     ADD / EDIT MEMBER
-  ========================================================= */
-
+  // =========================================================
+  // ADD / EDIT MEMBER
+  // =========================================================
   function handleMemberSubmit(e) {
     e.preventDefault();
 
@@ -560,14 +721,12 @@ function Team({
       return;
     }
 
-    const profileData =
-      buildNormalizedProfileData();
+    const profileData = buildNormalizedProfileData();
 
-    /* =======================================================
-       EDIT CURRENT USER
-       ALL USERS CAN EDIT THEIR OWN PROFILE
-    ======================================================= */
-
+    // =======================================================
+    // EDIT CURRENT USER
+    // ALL USERS
+    // =======================================================
     if (isEditingProfile) {
       if (!activeCurrentUser) {
         return;
@@ -576,13 +735,18 @@ function Team({
       const updatedMember = {
         ...activeCurrentUser,
         ...profileData,
+
+        membershipId:
+          activeCurrentUser.membershipId ?? null,
+
+        userId:
+          activeCurrentUser.userId ??
+          getUserId(activeCurrentUser),
+
         isCurrentUser: true,
       };
 
-      if (
-        typeof onUpdateMember ===
-        "function"
-      ) {
+      if (typeof onUpdateMember === "function") {
         onUpdateMember(updatedMember);
       }
 
@@ -590,17 +754,13 @@ function Team({
       return;
     }
 
-    /* =======================================================
-       EDIT EXISTING MEMBER
-       TEAM LEADER ONLY
-    ======================================================= */
-
+    // =======================================================
+    // EDIT OTHER MEMBER
+    // TEAM LEADER ONLY
+    // =======================================================
     if (editingMember) {
-      if (!isTeamLeader) {
-        return;
-      }
-
       if (
+        !isTeamLeader ||
         isCurrentUserMember(editingMember)
       ) {
         return;
@@ -609,12 +769,15 @@ function Team({
       const updatedMember = {
         ...editingMember,
         ...profileData,
+
+        membershipId:
+          getMembershipId(editingMember),
+
+        userId:
+          getUserId(editingMember),
       };
 
-      if (
-        typeof onUpdateMember ===
-        "function"
-      ) {
+      if (typeof onUpdateMember === "function") {
         onUpdateMember(updatedMember);
       }
 
@@ -622,113 +785,84 @@ function Team({
       return;
     }
 
-    /* =======================================================
-       ADD NEW MEMBER
-       TEAM LEADER ONLY
-    ======================================================= */
-
+    // =======================================================
+    // ADD NEW MEMBER
+    // TEAM LEADER ONLY
+    // =======================================================
     if (!isTeamLeader) {
       return;
     }
 
-    const generatedId =
-      typeof crypto !== "undefined" &&
-      typeof crypto.randomUUID ===
-        "function"
-        ? crypto.randomUUID()
-        : `member-${Date.now()}`;
-
+    // The backend determines whether the new member has
+    // a registered CollabBoard account or is offline.
+    // Do not fabricate account or membership status here.
     const newMember = {
-      id: generatedId,
       ...profileData,
       role: "Member",
-      status: "Active",
-      joined: new Date().toLocaleDateString(
-        "en-US",
-        {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }
-      ),
       isCurrentUser: false,
     };
 
-    if (
-      typeof onAddMember ===
-      "function"
-    ) {
+    if (typeof onAddMember === "function") {
       onAddMember(newMember);
     }
 
     closeMemberModal();
   }
 
-  /* =========================================================
-     DELETE MEMBER
-     TEAM LEADER ONLY
-  ========================================================= */
-
+  // =========================================================
+  // DELETE MEMBER
+  // TEAM LEADER ONLY
+  // =========================================================
   function handleDeleteMember(member) {
-    if (!isTeamLeader) {
-      return;
-    }
-
     if (
+      !isTeamLeader ||
       !member ||
       isCurrentUserMember(member)
     ) {
       return;
     }
 
-    const memberName =
-      getMemberName(member);
-
     const confirmed = window.confirm(
-      `Are you sure you want to remove ${memberName} from the team?`
+      `Are you sure you want to remove ${getMemberName(
+        member
+      )} from the team?`
     );
 
     if (!confirmed) {
       return;
     }
 
-    const memberId = getMemberId(member);
+    // Delete using the workspace membership ID.
+    const membershipId = getMembershipId(member);
 
     if (
-      memberId === null ||
-      memberId === undefined
+      membershipId === null ||
+      membershipId === undefined
     ) {
       console.error(
-        "Unable to delete member because no member ID was found."
+        "Unable to delete member because no workspace membership ID was found."
       );
-
       return;
     }
 
-    if (
-      typeof onDeleteMember ===
-      "function"
-    ) {
-      onDeleteMember(memberId);
+    if (typeof onDeleteMember === "function") {
+      onDeleteMember(membershipId);
     }
 
     setSelectedMemberId(null);
   }
 
-  /* =========================================================
-     COPY WORKSPACE CODE
-     ALL USERS
-  ========================================================= */
-
+  // =========================================================
+  // COPY WORKSPACE CODE
+  // ALL USERS
+  // =========================================================
   async function handleCopyInviteCode() {
-    if (
-      !workspaceCode ||
-      workspaceCode === "------"
-    ) {
+    if (!workspaceCode || workspaceCode === "------") {
       return;
     }
 
     try {
+      // Use the modern clipboard API when available.
       if (
         navigator.clipboard &&
         window.isSecureContext
@@ -737,34 +871,23 @@ function Team({
           workspaceCode
         );
       } else {
-        const textArea =
-          document.createElement(
-            "textarea"
-          );
+        // Clipboard fallback.
+        const textArea = document.createElement("textarea");
 
-        textArea.value =
-          workspaceCode;
-
-        textArea.style.position =
-          "fixed";
-        textArea.style.left =
-          "-9999px";
+        textArea.value = workspaceCode;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
         textArea.style.top = "0";
         textArea.style.opacity = "0";
 
-        document.body.appendChild(
-          textArea
-        );
+        document.body.appendChild(textArea);
 
         textArea.focus();
         textArea.select();
 
-        const copied =
-          document.execCommand("copy");
+        const copied = document.execCommand("copy");
 
-        document.body.removeChild(
-          textArea
-        );
+        document.body.removeChild(textArea);
 
         if (!copied) {
           throw new Error(
@@ -788,12 +911,12 @@ function Team({
     }
   }
 
-  /* =========================================================
-     FILTER MEMBERS
-  ========================================================= */
-
-  const normalizedSearchTerm =
-    searchTerm.trim().toLowerCase();
+  // =========================================================
+  // SEARCH FILTER
+  // =========================================================
+  const normalizedSearchTerm = searchTerm
+    .trim()
+    .toLowerCase();
 
   const filteredMembers = useMemo(() => {
     if (!Array.isArray(members)) {
@@ -811,7 +934,10 @@ function Team({
         member?.email,
         member?.currentJob,
         member?.role,
-        member?.status,
+        member?.workspaceRole,
+        member?.accountStatus,
+        member?.membershipStatus,
+        getMemberPresence(member),
       ]
         .filter(
           (value) =>
@@ -825,29 +951,25 @@ function Team({
         normalizedSearchTerm
       );
     });
-  }, [
-    members,
-    normalizedSearchTerm,
-  ]);
+  }, [members, normalizedSearchTerm]);
 
-  /* =========================================================
-     RENDER
-  ========================================================= */
-
+  // =========================================================
+  // MAIN UI
+  // =========================================================
   return (
     <div className="team-page">
-
-      {/* ===================================================
+      {/* =====================================================
           HEADER
-      =================================================== */}
-
+      ===================================================== */}
       <div className="team-page-header">
         <div>
           <p className="team-page-label">
             TEAM WORKSPACE
           </p>
 
-          <h1>Team</h1>
+          <h1>
+            Team
+          </h1>
 
           <p className="team-page-subtitle">
             Manage and connect with your team members.
@@ -855,6 +977,7 @@ function Team({
         </div>
 
         <div className="team-header-actions">
+          {/* SEARCH */}
           <div className="team-search">
             <span aria-hidden="true">
               ⌕
@@ -866,40 +989,30 @@ function Team({
               aria-label="Search team members"
               value={searchTerm}
               onChange={(e) =>
-                setSearchTerm(
-                  e.target.value
-                )
+                setSearchTerm(e.target.value)
               }
             />
           </div>
 
-          {/* =================================================
-              ADD MEMBER
-              TEAM LEADER ONLY
-          ================================================= */}
-
+          {/* ADD MEMBER — TEAM LEADER ONLY */}
           {isTeamLeader && (
             <button
               type="button"
               className="add-member-button"
-              onClick={
-                handleOpenAddMember
-              }
+              onClick={handleOpenAddMember}
             >
               <span aria-hidden="true">
                 +
               </span>
-
               Add Member
             </button>
           )}
         </div>
       </div>
 
-      {/* ===================================================
+      {/* =====================================================
           WORKSPACE INFORMATION
-      =================================================== */}
-
+      ===================================================== */}
       <div className="team-info-banner">
         <div className="team-info-icon">
           i
@@ -918,16 +1031,13 @@ function Team({
         </div>
       </div>
 
-      {/* ===================================================
-          MAIN TEAM CONTENT
-      =================================================== */}
-
+      {/* =====================================================
+          TEAM CONTENT
+      ===================================================== */}
       <div className="team-content-grid">
-
-        {/* =================================================
+        {/* ===================================================
             TEAM MEMBERS
-        ================================================= */}
-
+        =================================================== */}
         <div className="team-members-card">
           <div className="team-card-header">
             <div>
@@ -946,124 +1056,99 @@ function Team({
 
           <div className="team-member-list">
             {filteredMembers.length > 0 ? (
-              filteredMembers.map(
-                (member, index) => (
-                  <div
-                    className="team-member-row"
-                    key={getMemberKey(
-                      member,
-                      index
-                    )}
-                  >
+              filteredMembers.map((member, index) => (
+                <div
+                  className="team-member-row"
+                  key={getMemberKey(member, index)}
+                >
+                  {/* AVATAR */}
+                  <div className="member-avatar">
+                    {getMemberInitials(member)}
+                  </div>
 
-                    {/* AVATAR */}
+                  {/* MAIN MEMBER INFO */}
+                  <div className="member-main-info">
+                    <div className="member-name-line">
+                      <h3>
+                        {getMemberName(member)}
+                      </h3>
 
-                    <div className="member-avatar">
-                      {getMemberInitials(
-                        member
+                      {/* CURRENT USER */}
+                      {isCurrentUserMember(member) && (
+                        <span className="you-badge">
+                          YOU
+                        </span>
+                      )}
+
+                      {/* TEAM LEADER */}
+                      {isLeaderRole(
+                        member?.role ||
+                        member?.workspaceRole
+                      ) && (
+                        <span className="leader-badge">
+                          TEAM LEADER
+                        </span>
                       )}
                     </div>
 
-                    {/* MEMBER INFORMATION */}
+                    <p>
+                      {getMemberProjectRole(member)}
+                      {" · "}
+                      {getMemberRole(member)}
+                    </p>
 
-                    <div className="member-main-info">
-                      <div className="member-name-line">
-                        <h3>
-                          {getMemberName(
-                            member
-                          )}
-                        </h3>
+                    <span className="member-email">
+                      {member?.email ||
+                        "No email provided"}
+                    </span>
+                  </div>
 
-                        {isCurrentUserMember(
-                          member
-                        ) && (
-                          <span className="you-badge">
-                            YOU
-                          </span>
-                        )}
+                  {/* MEMBER STATUS */}
+                  <div className="member-status">
+                    <div className="member-status-main">
+                      <span className="status-dot"></span>
 
-                        {isLeaderRole(
-                          member?.role
-                        ) && (
-                          <span className="leader-badge">
-                            TEAM LEADER
-                          </span>
-                        )}
-                      </div>
-
-                      <p>
-                        {
-                          getMemberProjectRole(
-                            member
-                          )
-                        }
-
-                        {" · "}
-
-                        {getMemberRole(
-                          member
-                        )}
-                      </p>
-
-                      <span className="member-email">
-                        {member?.email ||
-                          "No email provided"}
+                      <span>
+                        {getMemberPresence(member)}
                       </span>
                     </div>
 
-                    {/* STATUS */}
+                    <small>
+                      Account:{" "}
+                      {getAccountStatus(member)}
+                    </small>
 
-                    <div className="member-status">
-                      <div className="member-status-main">
-                        <span className="status-dot"></span>
+                    <small>
+                      Membership:{" "}
+                      {getMembershipStatus(member)}
+                    </small>
 
-                        <span>
-                          {
-                            getMemberStatus(
-                              member
-                            )
-                          }
-                        </span>
-                      </div>
-
-                      <small>
-                        Joined{" "}
-                        {
-                          getMemberJoined(
-                            member
-                          )
-                        }
-                      </small>
-                    </div>
-
-                    {/* VIEW BUTTON */}
-
-                    <button
-                      type="button"
-                      className="view-member-button"
-                      onClick={() => {
-                        const memberId =
-                          getMemberId(
-                            member
-                          );
-
-                        if (
-                          memberId !==
-                            null &&
-                          memberId !==
-                            undefined
-                        ) {
-                          setSelectedMemberId(
-                            memberId
-                          );
-                        }
-                      }}
-                    >
-                      View
-                    </button>
+                    <small>
+                      Joined{" "}
+                      {getMemberJoined(member)}
+                    </small>
                   </div>
-                )
-              )
+
+                  {/* VIEW */}
+                  <button
+                    type="button"
+                    className="view-member-button"
+                    onClick={() => {
+                      const membershipId =
+                        getMembershipId(member);
+
+                      if (
+                        membershipId !== null &&
+                        membershipId !== undefined
+                      ) {
+                        setSelectedMemberId(membershipId);
+                      }
+                    }}
+                  >
+                    View
+                  </button>
+                </div>
+              ))
             ) : (
               <div className="no-members">
                 No members found.
@@ -1072,7 +1157,6 @@ function Team({
           </div>
 
           {/* FOOTER */}
-
           <div className="team-members-footer">
             <span>
               👥
@@ -1084,25 +1168,18 @@ function Team({
           </div>
         </div>
 
-        {/* =================================================
+        {/* ===================================================
             RIGHT COLUMN
-        ================================================= */}
-
+        =================================================== */}
         <div className="team-right-column">
-
-          {/* =================================================
-              MY PROFILE
-          ================================================= */}
-
+          {/* MY PROFILE */}
           <div className="team-side-card">
             <h2>
               My Profile
             </h2>
 
             <div className="my-profile-avatar">
-              {getMemberInitials(
-                activeCurrentUser
-              )}
+              {getMemberInitials(activeCurrentUser)}
             </div>
 
             <h3>
@@ -1134,18 +1211,13 @@ function Team({
             <button
               type="button"
               className="edit-profile-button"
-              onClick={
-                handleEditMyProfile
-              }
+              onClick={handleEditMyProfile}
             >
               ♙ Edit My Profile
             </button>
           </div>
 
-          {/* =================================================
-              HELP
-          ================================================= */}
-
+          {/* HELP CARD */}
           <div className="team-help-card">
             <div className="help-icon">
               👥
@@ -1162,11 +1234,7 @@ function Team({
             </p>
           </div>
 
-          {/* =================================================
-              WORKSPACE CODE
-              ALL USERS CAN COPY
-          ================================================= */}
-
+          {/* WORKSPACE CODE — ALL USERS */}
           <div className="workspace-code-card">
             <h2>
               Workspace Code
@@ -1180,13 +1248,9 @@ function Team({
               <button
                 type="button"
                 className={`workspace-copy-button ${
-                  codeCopied
-                    ? "copied"
-                    : ""
+                  codeCopied ? "copied" : ""
                 }`}
-                onClick={
-                  handleCopyInviteCode
-                }
+                onClick={handleCopyInviteCode}
                 title={
                   codeCopied
                     ? "Copied!"
@@ -1198,9 +1262,7 @@ function Team({
                     : "Copy workspace code"
                 }
               >
-                {codeCopied
-                  ? "✓"
-                  : "⧉"}
+                {codeCopied ? "✓" : "⧉"}
               </button>
             </div>
 
@@ -1215,7 +1277,6 @@ function Team({
       {/* =====================================================
           ADD / EDIT MEMBER MODAL
       ===================================================== */}
-
       {showMemberForm && (
         <div
           className="team-modal-overlay"
@@ -1223,10 +1284,9 @@ function Team({
         >
           <div
             className="team-modal"
-            onClick={(e) =>
-              e.stopPropagation()
-            }
+            onClick={(e) => e.stopPropagation()}
           >
+            {/* MODAL HEADER */}
             <div className="team-modal-header">
               <div>
                 <h2>
@@ -1256,15 +1316,12 @@ function Team({
               </button>
             </div>
 
+            {/* MEMBER FORM */}
             <form
               className="member-form"
-              onSubmit={
-                handleMemberSubmit
-              }
+              onSubmit={handleMemberSubmit}
             >
-
               {/* FULL NAME */}
-
               <div className="member-form-field">
                 <label htmlFor="team-member-name">
                   Full Name
@@ -1276,15 +1333,12 @@ function Team({
                   name="name"
                   placeholder="Enter full name"
                   value={formData.name}
-                  onChange={
-                    handleInputChange
-                  }
+                  onChange={handleInputChange}
                   required
                 />
               </div>
 
               {/* AGE + GENDER */}
-
               <div className="member-form-row">
                 <div className="member-form-field">
                   <label htmlFor="team-member-age">
@@ -1299,9 +1353,7 @@ function Team({
                     max="120"
                     placeholder="Enter age"
                     value={formData.age}
-                    onChange={
-                      handleInputChange
-                    }
+                    onChange={handleInputChange}
                   />
                 </div>
 
@@ -1314,9 +1366,7 @@ function Team({
                     id="team-member-gender"
                     name="gender"
                     value={formData.gender}
-                    onChange={
-                      handleInputChange
-                    }
+                    onChange={handleInputChange}
                   >
                     <option value="">
                       Select gender
@@ -1342,7 +1392,6 @@ function Team({
               </div>
 
               {/* PROJECT ROLE */}
-
               <div className="member-form-field">
                 <label htmlFor="team-member-project-role">
                   Project Role
@@ -1353,17 +1402,12 @@ function Team({
                   type="text"
                   name="projectRole"
                   placeholder="e.g. Data Analyst, ML Engineer"
-                  value={
-                    formData.projectRole
-                  }
-                  onChange={
-                    handleInputChange
-                  }
+                  value={formData.projectRole}
+                  onChange={handleInputChange}
                 />
               </div>
 
               {/* CURRENT JOB */}
-
               <div className="member-form-field">
                 <label htmlFor="team-member-current-job">
                   Current Job / Position
@@ -1374,17 +1418,12 @@ function Team({
                   type="text"
                   name="currentJob"
                   placeholder="e.g. Undergraduate, Data Scientist"
-                  value={
-                    formData.currentJob
-                  }
-                  onChange={
-                    handleInputChange
-                  }
+                  value={formData.currentJob}
+                  onChange={handleInputChange}
                 />
               </div>
 
               {/* EMAIL */}
-
               <div className="member-form-field">
                 <label htmlFor="team-member-email">
                   Email
@@ -1396,18 +1435,63 @@ function Team({
                   name="email"
                   placeholder="Enter email address"
                   value={formData.email}
-                  onChange={
-                    handleInputChange
-                  }
+                  onChange={handleInputChange}
                   required
                 />
               </div>
 
-              {/* BIO */}
+              {/* PHONE */}
+              <div className="member-form-field">
+                <label htmlFor="team-member-phone">
+                  Phone
+                </label>
 
+                <input
+                  id="team-member-phone"
+                  type="tel"
+                  name="phone"
+                  placeholder="Enter phone number"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              {/* LOCATION */}
+              <div className="member-form-field">
+                <label htmlFor="team-member-location">
+                  Location
+                </label>
+
+                <input
+                  id="team-member-location"
+                  type="text"
+                  name="location"
+                  placeholder="e.g. Colombo, Sri Lanka"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              {/* TIME ZONE */}
+              <div className="member-form-field">
+                <label htmlFor="team-member-time-zone">
+                  Time Zone
+                </label>
+
+                <input
+                  id="team-member-time-zone"
+                  type="text"
+                  name="timeZone"
+                  placeholder="e.g. Asia/Colombo"
+                  value={formData.timeZone}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              {/* BIO */}
               <div className="member-form-field">
                 <label htmlFor="team-member-bio">
-                  Short Bio
+                  Short Bio{" "}
                   <span>
                     Optional
                   </span>
@@ -1419,21 +1503,16 @@ function Team({
                   rows="3"
                   placeholder="Tell your team about yourself..."
                   value={formData.bio}
-                  onChange={
-                    handleInputChange
-                  }
+                  onChange={handleInputChange}
                 />
               </div>
 
               {/* FORM ACTIONS */}
-
               <div className="member-form-actions">
                 <button
                   type="button"
                   className="modal-cancel-button"
-                  onClick={
-                    closeMemberModal
-                  }
+                  onClick={closeMemberModal}
                 >
                   Cancel
                 </button>
@@ -1457,66 +1536,87 @@ function Team({
       {/* =====================================================
           VIEW MEMBER MODAL
       ===================================================== */}
-
       {selectedMember && (
         <div
           className="team-modal-overlay"
-          onClick={() =>
-            setSelectedMemberId(null)
-          }
+          onClick={() => setSelectedMemberId(null)}
         >
           <div
             className="member-profile-modal"
-            onClick={(e) =>
-              e.stopPropagation()
-            }
+            onClick={(e) => e.stopPropagation()}
           >
+            {/* CLOSE */}
             <button
               type="button"
               className="modal-close-button"
-              onClick={() =>
-                setSelectedMemberId(null)
-              }
+              onClick={() => setSelectedMemberId(null)}
               aria-label="Close"
             >
               ×
             </button>
 
             {/* AVATAR */}
-
             <div className="profile-modal-avatar">
-              {getMemberInitials(
-                selectedMember
-              )}
+              {getMemberInitials(selectedMember)}
             </div>
 
+            {/* NAME */}
             <h2>
-              {getMemberName(
-                selectedMember
-              )}
+              {getMemberName(selectedMember)}
             </h2>
 
+            {/* ROLE */}
             <span className="profile-modal-role">
-              {getMemberRole(
-                selectedMember
-              )}
+              {getMemberRole(selectedMember)}
             </span>
 
             {/* MEMBER DETAILS */}
-
             <div className="profile-details">
+              {/* ONLINE / OFFLINE */}
+              <div>
+                <span>
+                  Account
+                </span>
+
+                <strong>
+                  {getMemberPresence(selectedMember)}
+                </strong>
+              </div>
+
+              {/* ACCOUNT STATUS */}
+              <div>
+                <span>
+                  Account Status
+                </span>
+
+                <strong>
+                  {getAccountStatus(selectedMember)}
+                </strong>
+              </div>
+
+              {/* MEMBERSHIP STATUS */}
+              <div>
+                <span>
+                  Membership
+                </span>
+
+                <strong>
+                  {getMembershipStatus(selectedMember)}
+                </strong>
+              </div>
+
+              {/* PROJECT ROLE */}
               <div>
                 <span>
                   Project Role
                 </span>
 
                 <strong>
-                  {getMemberProjectRole(
-                    selectedMember
-                  )}
+                  {getMemberProjectRole(selectedMember)}
                 </strong>
               </div>
 
+              {/* CURRENT JOB */}
               <div>
                 <span>
                   Current Job
@@ -1528,6 +1628,7 @@ function Team({
                 </strong>
               </div>
 
+              {/* EMAIL */}
               <div>
                 <span>
                   Email
@@ -1539,6 +1640,43 @@ function Team({
                 </strong>
               </div>
 
+              {/* PHONE */}
+              <div>
+                <span>
+                  Phone
+                </span>
+
+                <strong>
+                  {selectedMember?.phone ||
+                    "Not provided"}
+                </strong>
+              </div>
+
+              {/* LOCATION */}
+              <div>
+                <span>
+                  Location
+                </span>
+
+                <strong>
+                  {selectedMember?.location ||
+                    "Not provided"}
+                </strong>
+              </div>
+
+              {/* TIME ZONE */}
+              <div>
+                <span>
+                  Time Zone
+                </span>
+
+                <strong>
+                  {selectedMember?.timeZone ||
+                    "Not provided"}
+                </strong>
+              </div>
+
+              {/* AGE */}
               <div>
                 <span>
                   Age
@@ -1550,6 +1688,7 @@ function Team({
                 </strong>
               </div>
 
+              {/* GENDER */}
               <div>
                 <span>
                   Gender
@@ -1561,21 +1700,19 @@ function Team({
                 </strong>
               </div>
 
+              {/* JOINED */}
               <div>
                 <span>
                   Joined
                 </span>
 
                 <strong>
-                  {getMemberJoined(
-                    selectedMember
-                  )}
+                  {getMemberJoined(selectedMember)}
                 </strong>
               </div>
             </div>
 
             {/* BIO */}
-
             {selectedMember?.bio && (
               <div className="profile-bio">
                 <span>
@@ -1588,23 +1725,15 @@ function Team({
               </div>
             )}
 
-            {/* =================================================
-                TEAM LEADER MEMBER CONTROLS
-                OTHER MEMBERS ONLY
-            ================================================= */}
-
+            {/* TEAM LEADER CONTROLS — OTHER MEMBERS ONLY */}
             {isTeamLeader &&
-              !isCurrentUserMember(
-                selectedMember
-              ) && (
+              !isCurrentUserMember(selectedMember) && (
                 <div className="member-profile-actions">
                   <button
                     type="button"
                     className="edit-member-button"
                     onClick={() =>
-                      handleOpenEditMember(
-                        selectedMember
-                      )
+                      handleOpenEditMember(selectedMember)
                     }
                   >
                     Edit Member
@@ -1614,9 +1743,7 @@ function Team({
                     type="button"
                     className="delete-member-button"
                     onClick={() =>
-                      handleDeleteMember(
-                        selectedMember
-                      )
+                      handleDeleteMember(selectedMember)
                     }
                   >
                     Delete Member
@@ -1624,14 +1751,8 @@ function Team({
                 </div>
               )}
 
-            {/* =================================================
-                CURRENT USER PROFILE
-                ALL USERS
-            ================================================= */}
-
-            {isCurrentUserMember(
-              selectedMember
-            ) && (
+            {/* CURRENT USER PROFILE — ALL USERS */}
+            {isCurrentUserMember(selectedMember) && (
               <button
                 type="button"
                 className="modal-submit-button profile-edit-button"

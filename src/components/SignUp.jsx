@@ -18,6 +18,10 @@ function SignUp({ onSignIn }) {
 
   const [isLoading, setIsLoading] = useState(false);
 
+  // =========================================================
+  // HANDLE INPUT CHANGES
+  // =========================================================
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
@@ -100,7 +104,8 @@ function SignUp({ onSignIn }) {
         data = await response.json();
       } catch (jsonError) {
         throw new Error(
-          "The server returned an invalid registration response."
+          "The server returned an invalid registration response.",
+          { cause: jsonError }
         );
       }
 
@@ -122,7 +127,7 @@ function SignUp({ onSignIn }) {
         "Account created successfully! Please log in with your new account."
       );
 
-      // Clear the registration form
+      // Clear the registration form.
       setFormData({
         fullName: "",
         email: "",
@@ -131,7 +136,7 @@ function SignUp({ onSignIn }) {
         terms: false,
       });
 
-      // Send the user to Login
+      // Send the user to Login.
       if (typeof onSignIn === "function") {
         onSignIn();
       }
@@ -147,12 +152,15 @@ function SignUp({ onSignIn }) {
     }
   };
 
+  // =========================================================
+  // RENDER
+  // =========================================================
+
   return (
     <div className="signup-page">
-
       {/* =====================================================
           SOFT BLURRED BACKGROUND
-          ===================================================== */}
+      ===================================================== */}
 
       <div className="signup-blur signup-blur-one"></div>
       <div className="signup-blur signup-blur-two"></div>
@@ -160,14 +168,12 @@ function SignUp({ onSignIn }) {
 
       {/* =====================================================
           SIGN UP CARD
-          ===================================================== */}
+      ===================================================== */}
 
       <div className="signup-card">
-
         {/* Logo */}
 
         <div className="signup-logo">
-
           <div className="signup-logo-icon">
             <BriefcaseBusiness
               size={30}
@@ -178,7 +184,6 @@ function SignUp({ onSignIn }) {
           <h1>
             Collab<span>Board</span>
           </h1>
-
         </div>
 
         {/* Subtitle */}
@@ -189,23 +194,20 @@ function SignUp({ onSignIn }) {
 
         {/* ===================================================
             FORM
-            =================================================== */}
+        =================================================== */}
 
         <form
           className="signup-form"
           onSubmit={handleSubmit}
         >
-
           {/* Full Name */}
 
           <div className="signup-input-group">
-
             <label htmlFor="fullName">
               Full Name
             </label>
 
             <div className="signup-input-wrapper">
-
               <svg
                 className="signup-input-icon"
                 viewBox="0 0 24 24"
@@ -218,9 +220,7 @@ function SignUp({ onSignIn }) {
                   r="4"
                 />
 
-                <path
-                  d="M4 21C4 16.6 7.6 14 12 14C16.4 14 20 16.6 20 21"
-                />
+                <path d="M4 21C4 16.6 7.6 14 12 14C16.4 14 20 16.6 20 21" />
               </svg>
 
               <input
@@ -234,21 +234,17 @@ function SignUp({ onSignIn }) {
                 required
                 disabled={isLoading}
               />
-
             </div>
-
           </div>
 
           {/* Email */}
 
           <div className="signup-input-group">
-
             <label htmlFor="email">
               Email
             </label>
 
             <div className="signup-input-wrapper">
-
               <svg
                 className="signup-input-icon"
                 viewBox="0 0 24 24"
@@ -263,9 +259,7 @@ function SignUp({ onSignIn }) {
                   rx="2"
                 />
 
-                <path
-                  d="M3 7L12 13L21 7"
-                />
+                <path d="M3 7L12 13L21 7" />
               </svg>
 
               <input
@@ -279,21 +273,17 @@ function SignUp({ onSignIn }) {
                 required
                 disabled={isLoading}
               />
-
             </div>
-
           </div>
 
           {/* Password */}
 
           <div className="signup-input-group">
-
             <label htmlFor="password">
               Password
             </label>
 
             <div className="signup-input-wrapper">
-
               <svg
                 className="signup-input-icon"
                 viewBox="0 0 24 24"
@@ -308,18 +298,12 @@ function SignUp({ onSignIn }) {
                   rx="2"
                 />
 
-                <path
-                  d="M8 10V7C8 4.8 9.8 3 12 3C14.2 3 16 4.8 16 7V10"
-                />
+                <path d="M8 10V7C8 4.8 9.8 3 12 3C14.2 3 16 4.8 16 7V10" />
               </svg>
 
               <input
                 id="password"
-                type={
-                  showPassword
-                    ? "text"
-                    : "password"
-                }
+                type={showPassword ? "text" : "password"}
                 name="password"
                 placeholder="Enter your password"
                 value={formData.password}
@@ -333,9 +317,7 @@ function SignUp({ onSignIn }) {
                 type="button"
                 className="signup-password-toggle"
                 onClick={() =>
-                  setShowPassword(
-                    !showPassword
-                  )
+                  setShowPassword(!showPassword)
                 }
                 aria-label={
                   showPassword
@@ -344,25 +326,19 @@ function SignUp({ onSignIn }) {
                 }
                 disabled={isLoading}
               >
-                {showPassword
-                  ? "🙈"
-                  : "👁️"}
+                {showPassword ? "🙈" : "👁️"}
               </button>
-
             </div>
-
           </div>
 
           {/* Confirm Password */}
 
           <div className="signup-input-group">
-
             <label htmlFor="confirmPassword">
               Confirm Password
             </label>
 
             <div className="signup-input-wrapper">
-
               <svg
                 className="signup-input-icon"
                 viewBox="0 0 24 24"
@@ -377,17 +353,13 @@ function SignUp({ onSignIn }) {
                   rx="2"
                 />
 
-                <path
-                  d="M8 10V7C8 4.8 9.8 3 12 3C14.2 3 16 4.8 16 7V10"
-                />
+                <path d="M8 10V7C8 4.8 9.8 3 12 3C14.2 3 16 4.8 16 7V10" />
               </svg>
 
               <input
                 id="confirmPassword"
                 type={
-                  showConfirmPassword
-                    ? "text"
-                    : "password"
+                  showConfirmPassword ? "text" : "password"
                 }
                 name="confirmPassword"
                 placeholder="Confirm your password"
@@ -413,21 +385,16 @@ function SignUp({ onSignIn }) {
                 }
                 disabled={isLoading}
               >
-                {showConfirmPassword
-                  ? "🙈"
-                  : "👁️"}
+                {showConfirmPassword ? "🙈" : "👁️"}
               </button>
-
             </div>
-
           </div>
 
           {/* =================================================
               TERMS
-              ================================================= */}
+          ================================================= */}
 
           <label className="terms-row">
-
             <input
               type="checkbox"
               name="terms"
@@ -446,19 +413,17 @@ function SignUp({ onSignIn }) {
                 Privacy Policy
               </a>
             </span>
-
           </label>
 
           {/* =================================================
               CREATE ACCOUNT
-              ================================================= */}
+          ================================================= */}
 
           <button
             type="submit"
             className="create-account-button"
             disabled={isLoading}
           >
-
             <span>
               {isLoading
                 ? "Creating Account..."
@@ -473,17 +438,14 @@ function SignUp({ onSignIn }) {
               <path d="M5 12H19" />
               <path d="M13 6L19 12L13 18" />
             </svg>
-
           </button>
-
         </form>
 
         {/* ===================================================
             DIVIDER
-            =================================================== */}
+        =================================================== */}
 
         <div className="signin-divider">
-
           <span></span>
 
           <p>
@@ -491,15 +453,13 @@ function SignUp({ onSignIn }) {
           </p>
 
           <span></span>
-
         </div>
 
         {/* ===================================================
             LOGIN
-            =================================================== */}
+        =================================================== */}
 
         <p className="signin-text">
-
           <span>
             Already have an account?
           </span>
@@ -510,21 +470,18 @@ function SignUp({ onSignIn }) {
           >
             Log In
           </button>
-
         </p>
 
         {/* ===================================================
             SECURITY
-            =================================================== */}
+        =================================================== */}
 
         <div className="security-message">
-
           <svg
             viewBox="0 0 24 24"
             fill="none"
             aria-hidden="true"
           >
-
             <rect
               x="5"
               y="10"
@@ -533,20 +490,14 @@ function SignUp({ onSignIn }) {
               rx="2"
             />
 
-            <path
-              d="M8 10V7C8 4.8 9.8 3 12 3C14.2 3 16 4.8 16 7V10"
-            />
-
+            <path d="M8 10V7C8 4.8 9.8 3 12 3C14.2 3 16 4.8 16 7V10" />
           </svg>
 
           <span>
             Your data is safe and secure with us.
           </span>
-
         </div>
-
       </div>
-
     </div>
   );
 }
