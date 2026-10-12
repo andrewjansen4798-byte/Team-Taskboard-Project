@@ -1,3 +1,4 @@
+
 const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
@@ -110,6 +111,21 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "GMT +5:30",
+    },
+
+    // =====================================================
+    // PROFILE IMAGE
+    // =====================================================
+
+    // Stores the image data so it can be restored from MongoDB
+    // after refreshing or signing in again.
+    profileImage: {
+      type: String,
+      default: "",
+      maxlength: [
+        4000000,
+        "Profile image data is too large",
+      ],
     },
   },
   {

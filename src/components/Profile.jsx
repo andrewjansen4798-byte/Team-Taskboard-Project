@@ -2,6 +2,70 @@ import { useEffect, useState } from "react";
 import "./Profile.css";
 
 // =========================================================
+// IMAGE HELPER - CROP TO SQUARE AND COMPRESS
+// =========================================================
+//
+// The picture is saved in MongoDB as a small data URL, so it is
+// center-cropped to a square and resized before saving.
+//
+// =========================================================
+function compressImage(file, size = 256, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("Please choose an image file."));
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onerror = () =>
+      reject(new Error("Unable to read the selected image."));
+
+    reader.onload = () => {
+      const image = new Image();
+
+      image.onerror = () =>
+        reject(new Error("The selected file is not a valid image."));
+
+      image.onload = () => {
+        const side = Math.min(image.width, image.height);
+        const sourceX = (image.width - side) / 2;
+        const sourceY = (image.height - side) / 2;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+
+        const context = canvas.getContext("2d");
+
+        if (!context) {
+          reject(new Error("Unable to process the selected image."));
+          return;
+        }
+
+        context.drawImage(
+          image,
+          sourceX,
+          sourceY,
+          side,
+          side,
+          0,
+          0,
+          size,
+          size
+        );
+
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+
+      image.src = reader.result;
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+// =========================================================
 // BUILD PROFILE FROM SHARED CURRENT USER
 // =========================================================
 function buildProfile(member, workspaceName = "CollabBoard") {
@@ -31,6 +95,7 @@ function buildProfile(member, workspaceName = "CollabBoard") {
     projectRole: member?.projectRole || "",
     currentJob: member?.currentJob || "",
     bio: member?.bio || "",
+    profileImage: member?.profileImage || "",
     workspace: workspaceName || "CollabBoard",
     memberSince: member?.joined || "Recently",
     accountStatus:
@@ -69,7 +134,6 @@ function Profile({
   // =========================================================
   // UI STATE
   // =========================================================
-  const [profileImage, setProfileImage] = useState(null);
   const [personalOpen, setPersonalOpen] = useState(true);
   const [contactOpen, setContactOpen] = useState(true);
   const [activeMenu, setActiveMenu] = useState(null);
@@ -115,15 +179,66 @@ function Profile({
   // =========================================================
   // PROFILE IMAGE
   // =========================================================
-  function handleProfileImageChange(e) {
-    const file = e.target.files?.[0];
+  //
+  // The image is compressed, shown immediately, and saved to the
+  // backend so it is restored after a refresh or a new login.
+  //
+  // =========================================================
+  async function handleProfileImageChange(e) {
+    const input = e.target;
+    const file = input.files?.[0];
+
+    // Allow selecting the same file again later.
+    input.value = "";
 
     if (!file) {
       return;
     }
 
-    const imageURL = URL.createObjectURL(file);
-    setProfileImage(imageURL);
+    if (file.size > 10 * 1024 * 1024) {
+      window.alert(
+        "Please choose an image smaller than 10 MB."
+      );
+      return;
+    }
+
+    try {
+      const compressedImage =
+        await compressImage(file);
+
+      // Show the new picture immediately.
+      setProfile((current) => ({
+        ...current,
+        profileImage: compressedImage,
+      }));
+
+      setEditData((current) => ({
+        ...current,
+        profileImage: compressedImage,
+      }));
+
+      // Save it to the backend.
+      if (
+        typeof onUpdateProfile === "function" &&
+        currentUser
+      ) {
+        onUpdateProfile({
+          ...currentUser,
+          profileImage: compressedImage,
+          currentPassword: "",
+        });
+      }
+    } catch (error) {
+      console.error(
+        "Profile image error:",
+        error
+      );
+
+      window.alert(
+        error.message ||
+          "Unable to update the profile picture."
+      );
+    }
   }
 
   // =========================================================
@@ -158,6 +273,8 @@ function Profile({
     const nextProfile = {
       ...profile,
       ...editData,
+      // The picture is saved separately when it is chosen.
+      profileImage: profile.profileImage,
     };
 
     if (
@@ -180,6 +297,8 @@ function Profile({
         timeZone: editData.timeZone.trim(),
         currentPassword:
           editData.currentPassword || "",
+        // Do not resend the picture with normal text edits.
+        profileImage: undefined,
       };
 
       onUpdateProfile(updatedMember);
@@ -312,9 +431,9 @@ function Profile({
       <div className="profile-hero-card">
         <div className="profile-avatar-section">
           <div className="profile-avatar-wrapper">
-            {profileImage ? (
+            {profile.profileImage ? (
               <img
-                src={profileImage}
+                src={profile.profileImage}
                 alt="Profile"
                 className="profile-avatar-image"
               />
@@ -359,7 +478,8 @@ function Profile({
           </p>
         </div>
       </div>
-            {/* =====================================================
+
+      {/* =====================================================
           INFORMATION GRID
       ===================================================== */}
       <div className="profile-information-grid">
@@ -598,7 +718,8 @@ function Profile({
             </div>
           )}
         </section>
-                {/* ===================================================
+
+        {/* ===================================================
             CONTACT INFORMATION
         =================================================== */}
         <section
@@ -806,7 +927,8 @@ function Profile({
             </div>
           )}
         </section>
-                {/* ===================================================
+
+        {/* ===================================================
             ABOUT ME
         =================================================== */}
         <section className="profile-information-card profile-about-card">

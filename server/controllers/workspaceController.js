@@ -1,6 +1,5 @@
 const crypto = require("crypto");
 const mongoose = require("mongoose");
-
 const Workspace = require("../models/Workspace");
 const User = require("../models/User");
 const Task = require("../models/task");
@@ -14,7 +13,9 @@ const WORKSPACE_NAME_MAX_LENGTH = 100;
 const WORKSPACE_DESCRIPTION_MAX_LENGTH = 500;
 const MEMBER_NAME_MAX_LENGTH = 100;
 const MEMBER_BIO_MAX_LENGTH = 1000;
-
+const MAX_PROFILE_IMAGE_LENGTH = 3800000;
+const PROFILE_IMAGE_DATA_URL_REGEX =
+  /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // =========================================================
@@ -390,13 +391,14 @@ const buildSafeMember = (
       membership.bio ||
       "",
 
+    profileImage: user?.profileImage || "",
+
     role:
       membership.role === "leader"
         ? "Team Leader"
         : "Member",
 
-    workspaceRole:
-      membership.role,
+    workspaceRole: membership.role,
 
     // Account status tells us whether the member has
     // an actual registered CollabBoard account.
@@ -457,12 +459,10 @@ const findMembershipByIdentifier = (
   return (
     workspace.members.find(
       (member) =>
-        String(member._id) ===
-          normalizedIdentifier ||
+        String(member._id) === normalizedIdentifier ||
         (
           member.user &&
-          String(member.user) ===
-            normalizedIdentifier
+          String(member.user) === normalizedIdentifier
         )
     ) || null
   );
@@ -548,7 +548,7 @@ const createWorkspace = async (
       await User.findById(
         req.user._id
       ).select(
-        "name email age gender projectRole currentJob phone location timeZone bio"
+        "name email age gender projectRole currentJob phone location timeZone bio profileImage"
       );
 
     if (!creatorUser) {
@@ -562,26 +562,15 @@ const createWorkspace = async (
     const workspace =
       await Workspace.create({
         name: trimmedName,
-
-        description:
-          trimmedDescription,
-
-        joinCode:
-          await generateJoinCode(),
-
-        createdBy:
-          req.user._id,
+        description: trimmedDescription,
+        joinCode: await generateJoinCode(),
+        createdBy: req.user._id,
 
         members: [
           {
-            user:
-              req.user._id,
-
-            email:
-              creatorUser.email,
-
-            name:
-              creatorUser.name,
+            user: req.user._id,
+            email: creatorUser.email,
+            name: creatorUser.name,
 
             age:
               creatorUser.age ??
@@ -615,30 +604,22 @@ const createWorkspace = async (
               creatorUser.bio ||
               "",
 
-            role:
-              "leader",
-
-            status:
-              "active",
-
-            accountStatus:
-              "active",
-
-            joinedAt:
-              new Date(),
+            role: "leader",
+            status: "active",
+            accountStatus: "active",
+            joinedAt: new Date(),
           },
         ],
       });
 
     await workspace.populate(
       "members.user",
-      "name email age gender projectRole currentJob phone location timeZone bio"
+      "name email age gender projectRole currentJob phone location timeZone bio profileImage"
     );
 
     return res.status(201).json({
       success: true,
-      message:
-        "Workspace created successfully",
+      message: "Workspace created successfully",
       workspace,
     });
   } catch (error) {
@@ -658,15 +639,12 @@ const createWorkspace = async (
     }
 
     if (
-      error.name ===
-      "ValidationError"
+      error.name === "ValidationError"
     ) {
       return res.status(400).json({
         success: false,
         message:
-          getValidationMessages(
-            error
-          ).join(", "),
+          getValidationMessages(error).join(", "),
       });
     }
 
@@ -693,56 +671,34 @@ const getMyWorkspaces = async (
 
         members: {
           $elemMatch: {
-            user:
-              req.user._id,
-
-            status:
-              "active",
+            user: req.user._id,
+            status: "active",
           },
         },
       })
         .sort({
-          createdAt:
-            -1,
+          createdAt: -1,
         })
         .lean();
 
     const formattedWorkspaces =
       workspaces.map(
-        (
-          workspace
-        ) => {
+        (workspace) => {
           const membership =
             workspace.members.find(
-              (
-                member
-              ) =>
+              (member) =>
                 member.user &&
-                String(
-                  member.user
-                ) ===
-                  String(
-                    req.user._id
-                  ) &&
-                member.status ===
-                  "active"
+                String(member.user) ===
+                  String(req.user._id) &&
+                member.status === "active"
             );
 
           return {
-            id:
-              workspace._id,
-
-            name:
-              workspace.name,
-
-            description:
-              workspace.description,
-
-            joinCode:
-              workspace.joinCode,
-
-            status:
-              workspace.status,
+            id: workspace._id,
+            name: workspace.name,
+            description: workspace.description,
+            joinCode: workspace.joinCode,
+            status: workspace.status,
 
             role:
               membership
@@ -754,26 +710,17 @@ const getMyWorkspaces = async (
                 ? membership.joinedAt
                 : null,
 
-            createdBy:
-              workspace.createdBy,
-
-            createdAt:
-              workspace.createdAt,
-
-            updatedAt:
-              workspace.updatedAt,
+            createdBy: workspace.createdBy,
+            createdAt: workspace.createdAt,
+            updatedAt: workspace.updatedAt,
           };
         }
       );
 
     return res.status(200).json({
       success: true,
-
-      count:
-        formattedWorkspaces.length,
-
-      workspaces:
-        formattedWorkspaces,
+      count: formattedWorkspaces.length,
+      workspaces: formattedWorkspaces,
     });
   } catch (error) {
     console.error(
@@ -828,26 +775,22 @@ const joinWorkspace = async (
 
     const workspace =
       await Workspace.findOne({
-        joinCode:
-          normalizedJoinCode,
+        joinCode: normalizedJoinCode,
       });
 
     if (!workspace) {
       return res.status(404).json({
         success: false,
-        message:
-          "Workspace not found",
+        message: "Workspace not found",
       });
     }
 
     if (
-      workspace.status !==
-      "active"
+      workspace.status !== "active"
     ) {
       return res.status(403).json({
         success: false,
-        message:
-          "This workspace is inactive",
+        message: "This workspace is inactive",
       });
     }
 
@@ -855,7 +798,7 @@ const joinWorkspace = async (
       await User.findById(
         req.user._id
       ).select(
-        "name email age gender projectRole currentJob phone location timeZone bio"
+        "name email age gender projectRole currentJob phone location timeZone bio profileImage"
       );
 
     if (!requestingUser) {
@@ -875,12 +818,8 @@ const joinWorkspace = async (
       workspace.members.find(
         (member) =>
           member.user &&
-          String(
-            member.user
-          ) ===
-            String(
-              req.user._id
-            )
+          String(member.user) ===
+            String(req.user._id)
       );
 
     // -----------------------------------------------------
@@ -893,15 +832,12 @@ const joinWorkspace = async (
           (member) =>
             !member.user &&
             member.email &&
-            normalizeEmail(
-              member.email
-            ) ===
+            normalizeEmail(member.email) ===
               normalizedUserEmail
         );
     }
 
-    let alreadyMember =
-      false;
+    let alreadyMember = false;
 
     // -----------------------------------------------------
     // EXISTING MEMBERSHIP
@@ -913,11 +849,11 @@ const joinWorkspace = async (
       // ---------------------------------------------------
 
       if (
-        membership.status ===
-        "active"
+        membership.status === "active"
       ) {
         // A previous Non-Active invitation is now linked
         // to the registered account.
+
         if (!membership.user) {
           membership.user =
             requestingUser._id;
@@ -966,8 +902,7 @@ const joinWorkspace = async (
           await workspace.save();
         }
 
-        alreadyMember =
-          true;
+        alreadyMember = true;
       }
 
       // ---------------------------------------------------
@@ -976,16 +911,11 @@ const joinWorkspace = async (
 
       else {
         if (
-          membership.role ===
-            "leader" ||
+          membership.role === "leader" ||
           (
             membership.user &&
-            String(
-              membership.user
-            ) ===
-              String(
-                workspace.createdBy
-              )
+            String(membership.user) ===
+              String(workspace.createdBy)
           )
         ) {
           return res.status(409).json({
@@ -1036,17 +966,10 @@ const joinWorkspace = async (
           requestingUser.bio ||
           "";
 
-        membership.role =
-          "member";
-
-        membership.status =
-          "active";
-
-        membership.accountStatus =
-          "active";
-
-        membership.joinedAt =
-          new Date();
+        membership.role = "member";
+        membership.status = "active";
+        membership.accountStatus = "active";
+        membership.joinedAt = new Date();
 
         await workspace.save();
       }
@@ -1058,14 +981,9 @@ const joinWorkspace = async (
 
     else {
       workspace.members.push({
-        user:
-          requestingUser._id,
-
-        email:
-          requestingUser.email,
-
-        name:
-          requestingUser.name,
+        user: requestingUser._id,
+        email: requestingUser.email,
+        name: requestingUser.name,
 
         age:
           requestingUser.age ??
@@ -1099,17 +1017,10 @@ const joinWorkspace = async (
           requestingUser.bio ||
           "",
 
-        role:
-          "member",
-
-        status:
-          "active",
-
-        accountStatus:
-          "active",
-
-        joinedAt:
-          new Date(),
+        role: "member",
+        status: "active",
+        accountStatus: "active",
+        joinedAt: new Date(),
       });
 
       await workspace.save();
@@ -1117,34 +1028,27 @@ const joinWorkspace = async (
 
     await workspace.populate(
       "members.user",
-      "name email age gender projectRole currentJob phone location timeZone bio"
+      "name email age gender projectRole currentJob phone location timeZone bio profileImage"
     );
 
     const populatedMembership =
       workspace.members.find(
         (member) =>
           member.user &&
-          String(
-            member.user._id
-          ) ===
-            String(
-              req.user._id
-            ) &&
-          member.status ===
-            "active"
+          String(member.user._id) ===
+            String(req.user._id) &&
+          member.status === "active"
       );
 
     const populatedMembers =
       workspace.members.filter(
         (member) =>
-          member.status ===
-            "active" &&
+          member.status === "active" &&
           member.user
       );
 
     return res.status(200).json({
       success: true,
-
       alreadyMember,
 
       message:
@@ -1153,20 +1057,11 @@ const joinWorkspace = async (
           : "Joined workspace successfully",
 
       workspace: {
-        id:
-          workspace._id,
-
-        name:
-          workspace.name,
-
-        description:
-          workspace.description,
-
-        joinCode:
-          workspace.joinCode,
-
-        status:
-          workspace.status,
+        id: workspace._id,
+        name: workspace.name,
+        description: workspace.description,
+        joinCode: workspace.joinCode,
+        status: workspace.status,
 
         role:
           populatedMembership
@@ -1178,17 +1073,10 @@ const joinWorkspace = async (
             ? populatedMembership.joinedAt
             : null,
 
-        members:
-          populatedMembers,
-
-        createdBy:
-          workspace.createdBy,
-
-        createdAt:
-          workspace.createdAt,
-
-        updatedAt:
-          workspace.updatedAt,
+        members: populatedMembers,
+        createdBy: workspace.createdBy,
+        createdAt: workspace.createdAt,
+        updatedAt: workspace.updatedAt,
       },
     });
   } catch (error) {
@@ -1198,21 +1086,17 @@ const joinWorkspace = async (
     );
 
     if (
-      error.name ===
-      "ValidationError"
+      error.name === "ValidationError"
     ) {
       return res.status(400).json({
         success: false,
         message:
-          getValidationMessages(
-            error
-          ).join(", "),
+          getValidationMessages(error).join(", "),
       });
     }
 
     if (
-      error.code ===
-      11000
+      error.code === 11000
     ) {
       return res.status(409).json({
         success: false,
@@ -1251,10 +1135,7 @@ const getWorkspaceMembers = async (
     } = req.params;
 
     if (
-      !validateWorkspaceContext(
-        req,
-        res
-      )
+      !validateWorkspaceContext(req, res)
     ) {
       return;
     }
@@ -1263,32 +1144,26 @@ const getWorkspaceMembers = async (
       await Workspace.findById(
         workspaceId
       ).populate({
-        path:
-          "members.user",
-
+        path: "members.user",
         select:
-          "name email age gender projectRole currentJob phone location timeZone bio",
+          "name email age gender projectRole currentJob phone location timeZone bio profileImage",
       });
 
     if (!workspace) {
       return res.status(404).json({
         success: false,
-        message:
-          "Workspace not found",
+        message: "Workspace not found",
       });
     }
 
     const requesterId =
-      String(
-        req.user._id
-      );
+      String(req.user._id);
 
     const members =
       workspace.members
         .filter(
           (membership) =>
-            membership.status ===
-            "active"
+            membership.status === "active"
         )
         .map(
           (membership) => {
@@ -1308,8 +1183,7 @@ const getWorkspaceMembers = async (
                 String(
                   membership.user._id ||
                   membership.user
-                ) ===
-                  requesterId
+                ) === requesterId
               );
 
             return safeMember;
@@ -1321,19 +1195,12 @@ const getWorkspaceMembers = async (
       success: true,
 
       workspace: {
-        id:
-          workspace._id,
-
-        name:
-          workspace.name,
-
-        description:
-          workspace.description,
+        id: workspace._id,
+        name: workspace.name,
+        description: workspace.description,
       },
 
-      count:
-        members.length,
-
+      count: members.length,
       members,
     });
   } catch (error) {
@@ -1375,23 +1242,17 @@ const addWorkspaceMember = async (
     } = req.params;
 
     if (
-      !validateWorkspaceContext(
-        req,
-        res
-      )
+      !validateWorkspaceContext(req, res)
     ) {
       return;
     }
 
     const requesterMembership =
-      getRequesterMembership(
-        req
-      );
+      getRequesterMembership(req);
 
     if (
       !requesterMembership ||
-      requesterMembership.role !==
-        "leader"
+      requesterMembership.role !== "leader"
     ) {
       return res.status(403).json({
         success: false,
@@ -1411,17 +1272,14 @@ const addWorkspaceMember = async (
     }
 
     const profile =
-      normalizeMemberProfile(
-        req.body
-      );
+      normalizeMemberProfile(req.body);
 
     if (
       !validateMemberProfile(
         profile,
         res,
         {
-          requireName:
-            true,
+          requireName: true,
         }
       )
     ) {
@@ -1430,10 +1288,9 @@ const addWorkspaceMember = async (
 
     const user =
       await User.findOne({
-        email:
-          normalizedEmail,
+        email: normalizedEmail,
       }).select(
-        "name email age gender projectRole currentJob phone location timeZone bio"
+        "name email age gender projectRole currentJob phone location timeZone bio profileImage"
       );
 
     // -----------------------------------------------------
@@ -1445,27 +1302,20 @@ const addWorkspaceMember = async (
         (member) =>
           (
             member.email &&
-            normalizeEmail(
-              member.email
-            ) ===
+            normalizeEmail(member.email) ===
               normalizedEmail
           ) ||
           (
             user &&
             member.user &&
-            String(
-              member.user
-            ) ===
-              String(
-                user._id
-              )
+            String(member.user) ===
+              String(user._id)
           )
       );
 
     if (
       membership &&
-      membership.status ===
-        "active"
+      membership.status === "active"
     ) {
       return res.status(409).json({
         success: false,
@@ -1479,27 +1329,15 @@ const addWorkspaceMember = async (
     // -----------------------------------------------------
 
     if (membership) {
-      membership.status =
-        "active";
-
-      membership.role =
-        "member";
-
-      membership.joinedAt =
-        new Date();
+      membership.status = "active";
+      membership.role = "member";
+      membership.joinedAt = new Date();
 
       if (user) {
-        membership.user =
-          user._id;
-
-        membership.accountStatus =
-          "active";
-
-        membership.email =
-          user.email;
-
-        membership.name =
-          user.name;
+        membership.user = user._id;
+        membership.accountStatus = "active";
+        membership.email = user.email;
+        membership.name = user.name;
 
         membership.age =
           user.age ??
@@ -1533,41 +1371,18 @@ const addWorkspaceMember = async (
           user.bio ||
           "";
       } else {
-        membership.user =
-          null;
-
-        membership.accountStatus =
-          "non-active";
-
-        membership.email =
-          normalizedEmail;
-
-        membership.name =
-          profile.name;
-
-        membership.age =
-          profile.age;
-
-        membership.gender =
-          profile.gender;
-
-        membership.projectRole =
-          profile.projectRole;
-
-        membership.currentJob =
-          profile.currentJob;
-
-        membership.phone =
-          profile.phone;
-
-        membership.location =
-          profile.location;
-
-        membership.timeZone =
-          profile.timeZone;
-
-        membership.bio =
-          profile.bio;
+        membership.user = null;
+        membership.accountStatus = "non-active";
+        membership.email = normalizedEmail;
+        membership.name = profile.name;
+        membership.age = profile.age;
+        membership.gender = profile.gender;
+        membership.projectRole = profile.projectRole;
+        membership.currentJob = profile.currentJob;
+        membership.phone = profile.phone;
+        membership.location = profile.location;
+        membership.timeZone = profile.timeZone;
+        membership.bio = profile.bio;
       }
     }
 
@@ -1632,40 +1447,31 @@ const addWorkspaceMember = async (
             ? user.bio || ""
             : profile.bio,
 
-        role:
-          "member",
-
-        status:
-          "active",
+        role: "member",
+        status: "active",
 
         accountStatus:
           user
             ? "active"
             : "non-active",
 
-        joinedAt:
-          new Date(),
+        joinedAt: new Date(),
       };
 
-      req.workspace.members.push(
-        membership
-      );
+      req.workspace.members.push(membership);
 
       membership =
         req.workspace.members[
-          req.workspace.members.length -
-            1
+          req.workspace.members.length - 1
         ];
     }
 
     await req.workspace.save();
 
     await req.workspace.populate({
-      path:
-        "members.user",
-
+      path: "members.user",
       select:
-        "name email age gender projectRole currentJob phone location timeZone bio",
+        "name email age gender projectRole currentJob phone location timeZone bio profileImage",
     });
 
     const savedMembership =
@@ -1687,18 +1493,12 @@ const addWorkspaceMember = async (
           ? "Member added successfully"
           : "Member added as Non-Active because no CollabBoard account exists for this email",
 
-      member:
-        safeMember,
+      member: safeMember,
 
       workspace: {
-        id:
-          req.workspace._id,
-
-        name:
-          req.workspace.name,
-
-        description:
-          req.workspace.description,
+        id: req.workspace._id,
+        name: req.workspace.name,
+        description: req.workspace.description,
       },
     });
   } catch (error) {
@@ -1708,8 +1508,7 @@ const addWorkspaceMember = async (
     );
 
     if (
-      error.code ===
-      11000
+      error.code === 11000
     ) {
       return res.status(409).json({
         success: false,
@@ -1719,15 +1518,12 @@ const addWorkspaceMember = async (
     }
 
     if (
-      error.name ===
-      "ValidationError"
+      error.name === "ValidationError"
     ) {
       return res.status(400).json({
         success: false,
         message:
-          getValidationMessages(
-            error
-          ).join(", "),
+          getValidationMessages(error).join(", "),
       });
     }
 
@@ -1769,18 +1565,13 @@ const updateWorkspaceMember = async (
     } = req.params;
 
     if (
-      !validateWorkspaceContext(
-        req,
-        res
-      )
+      !validateWorkspaceContext(req, res)
     ) {
       return;
     }
 
     const requesterMembership =
-      getRequesterMembership(
-        req
-      );
+      getRequesterMembership(req);
 
     if (!requesterMembership) {
       return res.status(403).json({
@@ -1798,8 +1589,7 @@ const updateWorkspaceMember = async (
 
     if (
       !membership ||
-      membership.status !==
-        "active"
+      membership.status !== "active"
     ) {
       return res.status(404).json({
         success: false,
@@ -1809,18 +1599,13 @@ const updateWorkspaceMember = async (
     }
 
     const isLeader =
-      requesterMembership.role ===
-      "leader";
+      requesterMembership.role === "leader";
 
     const isSelf =
       Boolean(
         membership.user &&
-        String(
-          membership.user
-        ) ===
-          String(
-            req.user._id
-          )
+        String(membership.user) ===
+          String(req.user._id)
       );
 
     if (
@@ -1866,6 +1651,7 @@ const updateWorkspaceMember = async (
       phone,
       location,
       timeZone,
+      profileImage,
     } = req.body;
 
     const hasUpdate =
@@ -1878,7 +1664,8 @@ const updateWorkspaceMember = async (
       bio !== undefined ||
       phone !== undefined ||
       location !== undefined ||
-      timeZone !== undefined;
+      timeZone !== undefined ||
+      profileImage !== undefined;
 
     if (!hasUpdate) {
       return res.status(400).json({
@@ -1892,9 +1679,15 @@ const updateWorkspaceMember = async (
     // NON-ACTIVE MEMBER
     // =====================================================
 
-    if (
-      !membership.user
-    ) {
+    if (!membership.user) {
+      if (profileImage !== undefined) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Profile pictures are available only for registered CollabBoard accounts",
+        });
+      }
+
       let nextEmail =
         membership.email;
 
@@ -1903,8 +1696,7 @@ const updateWorkspaceMember = async (
       // ---------------------------------------------------
 
       if (
-        email !==
-        undefined
+        email !== undefined
       ) {
         const normalizedEmail =
           validateMemberEmail(
@@ -1916,30 +1708,20 @@ const updateWorkspaceMember = async (
           return;
         }
 
-        nextEmail =
-          normalizedEmail;
+        nextEmail = normalizedEmail;
 
         const duplicateMembership =
           req.workspace.members.find(
             (candidate) =>
-              String(
-                candidate._id
-              ) !==
-                String(
-                  membership._id
-                ) &&
-              candidate.status ===
-                "active" &&
+              String(candidate._id) !==
+                String(membership._id) &&
+              candidate.status === "active" &&
               candidate.email &&
-              normalizeEmail(
-                candidate.email
-              ) ===
+              normalizeEmail(candidate.email) ===
                 normalizedEmail
           );
 
-        if (
-          duplicateMembership
-        ) {
+        if (duplicateMembership) {
           return res.status(409).json({
             success: false,
             message:
@@ -1955,56 +1737,47 @@ const updateWorkspaceMember = async (
       const profile =
         normalizeMemberProfile({
           name:
-            name !==
-            undefined
+            name !== undefined
               ? name
               : membership.name,
 
           age:
-            age !==
-            undefined
+            age !== undefined
               ? age
               : membership.age,
 
           gender:
-            gender !==
-            undefined
+            gender !== undefined
               ? gender
               : membership.gender,
 
           projectRole:
-            projectRole !==
-            undefined
+            projectRole !== undefined
               ? projectRole
               : membership.projectRole,
 
           currentJob:
-            currentJob !==
-            undefined
+            currentJob !== undefined
               ? currentJob
               : membership.currentJob,
 
           phone:
-            phone !==
-            undefined
+            phone !== undefined
               ? phone
               : membership.phone,
 
           location:
-            location !==
-            undefined
+            location !== undefined
               ? location
               : membership.location,
 
           timeZone:
-            timeZone !==
-            undefined
+            timeZone !== undefined
               ? timeZone
               : membership.timeZone,
 
           bio:
-            bio !==
-            undefined
+            bio !== undefined
               ? bio
               : membership.bio,
         });
@@ -2014,8 +1787,7 @@ const updateWorkspaceMember = async (
           profile,
           res,
           {
-            requireName:
-              true,
+            requireName: true,
           }
         )
       ) {
@@ -2024,42 +1796,28 @@ const updateWorkspaceMember = async (
 
       const registeredUser =
         await User.findOne({
-          email:
-            nextEmail,
+          email: nextEmail,
         }).select(
-          "name email age gender projectRole currentJob phone location timeZone bio"
+          "name email age gender projectRole currentJob phone location timeZone bio profileImage"
         );
 
       // ---------------------------------------------------
       // EMAIL NOW BELONGS TO REGISTERED ACCOUNT
       // ---------------------------------------------------
 
-      if (
-        registeredUser
-      ) {
+      if (registeredUser) {
         const conflictingMembership =
           req.workspace.members.find(
             (candidate) =>
-              String(
-                candidate._id
-              ) !==
-                String(
-                  membership._id
-                ) &&
-              candidate.status ===
-                "active" &&
+              String(candidate._id) !==
+                String(membership._id) &&
+              candidate.status === "active" &&
               candidate.user &&
-              String(
-                candidate.user
-              ) ===
-                String(
-                  registeredUser._id
-                )
+              String(candidate.user) ===
+                String(registeredUser._id)
           );
 
-        if (
-          conflictingMembership
-        ) {
+        if (conflictingMembership) {
           return res.status(409).json({
             success: false,
             message:
@@ -2117,51 +1875,26 @@ const updateWorkspaceMember = async (
       // ---------------------------------------------------
 
       else {
-        membership.user =
-          null;
-
-        membership.email =
-          nextEmail;
-
-        membership.accountStatus =
-          "non-active";
-
-        membership.name =
-          profile.name;
-
-        membership.age =
-          profile.age;
-
-        membership.gender =
-          profile.gender;
-
-        membership.projectRole =
-          profile.projectRole;
-
-        membership.currentJob =
-          profile.currentJob;
-
-        membership.phone =
-          profile.phone;
-
-        membership.location =
-          profile.location;
-
-        membership.timeZone =
-          profile.timeZone;
-
-        membership.bio =
-          profile.bio;
+        membership.user = null;
+        membership.email = nextEmail;
+        membership.accountStatus = "non-active";
+        membership.name = profile.name;
+        membership.age = profile.age;
+        membership.gender = profile.gender;
+        membership.projectRole = profile.projectRole;
+        membership.currentJob = profile.currentJob;
+        membership.phone = profile.phone;
+        membership.location = profile.location;
+        membership.timeZone = profile.timeZone;
+        membership.bio = profile.bio;
       }
 
       await req.workspace.save();
 
       await req.workspace.populate({
-        path:
-          "members.user",
-
+        path: "members.user",
         select:
-          "name email age gender projectRole currentJob phone location timeZone bio",
+          "name email age gender projectRole currentJob phone location timeZone bio profileImage",
       });
 
       const updatedMembership =
@@ -2177,11 +1910,10 @@ const updateWorkspaceMember = async (
             ? "Non-Active member linked to the registered account successfully"
             : "Non-Active workspace member updated successfully",
 
-        member:
-          buildSafeMember(
-            updatedMembership,
-            workspaceId
-          ),
+        member: buildSafeMember(
+          updatedMembership,
+          workspaceId
+        ),
       });
     }
 
@@ -2207,24 +1939,20 @@ const updateWorkspaceMember = async (
     // -----------------------------------------------------
 
     if (
-      name !==
-      undefined
+      name !== undefined
     ) {
       if (
-        typeof name !==
-          "string" ||
+        typeof name !== "string" ||
         !name.trim()
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            "Name cannot be empty",
+          message: "Name cannot be empty",
         });
       }
 
       if (
-        name.trim()
-          .length >
+        name.trim().length >
         MEMBER_NAME_MAX_LENGTH
       ) {
         return res.status(400).json({
@@ -2234,8 +1962,7 @@ const updateWorkspaceMember = async (
         });
       }
 
-      user.name =
-        name.trim();
+      user.name = name.trim();
     }
 
     // -----------------------------------------------------
@@ -2243,25 +1970,19 @@ const updateWorkspaceMember = async (
     // -----------------------------------------------------
 
     if (
-      age !==
-      undefined
+      age !== undefined
     ) {
       if (
-        age ===
-          "" ||
-        age ===
-          null
+        age === "" ||
+        age === null
       ) {
-        user.age =
-          undefined;
+        user.age = undefined;
       } else {
         const numericAge =
           Number(age);
 
         if (
-          !Number.isInteger(
-            numericAge
-          ) ||
+          !Number.isInteger(numericAge) ||
           numericAge < 1 ||
           numericAge > 120
         ) {
@@ -2272,8 +1993,7 @@ const updateWorkspaceMember = async (
           });
         }
 
-        user.age =
-          numericAge;
+        user.age = numericAge;
       }
     }
 
@@ -2282,13 +2002,10 @@ const updateWorkspaceMember = async (
     // -----------------------------------------------------
 
     if (
-      gender !==
-      undefined
+      gender !== undefined
     ) {
       user.gender =
-        safeString(
-          gender
-        );
+        safeString(gender);
     }
 
     // -----------------------------------------------------
@@ -2296,13 +2013,10 @@ const updateWorkspaceMember = async (
     // -----------------------------------------------------
 
     if (
-      projectRole !==
-      undefined
+      projectRole !== undefined
     ) {
       user.projectRole =
-        safeString(
-          projectRole
-        );
+        safeString(projectRole);
     }
 
     // -----------------------------------------------------
@@ -2310,13 +2024,10 @@ const updateWorkspaceMember = async (
     // -----------------------------------------------------
 
     if (
-      currentJob !==
-      undefined
+      currentJob !== undefined
     ) {
       user.currentJob =
-        safeString(
-          currentJob
-        );
+        safeString(currentJob);
     }
 
     // -----------------------------------------------------
@@ -2324,23 +2035,19 @@ const updateWorkspaceMember = async (
     // -----------------------------------------------------
 
     if (
-      bio !==
-      undefined
+      bio !== undefined
     ) {
       if (
-        typeof bio !==
-        "string"
+        typeof bio !== "string"
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            "Bio must be text",
+          message: "Bio must be text",
         });
       }
 
       if (
-        bio.trim()
-          .length >
+        bio.trim().length >
         MEMBER_BIO_MAX_LENGTH
       ) {
         return res.status(400).json({
@@ -2350,8 +2057,7 @@ const updateWorkspaceMember = async (
         });
       }
 
-      user.bio =
-        bio.trim();
+      user.bio = bio.trim();
     }
 
     // -----------------------------------------------------
@@ -2359,22 +2065,18 @@ const updateWorkspaceMember = async (
     // -----------------------------------------------------
 
     if (
-      phone !==
-      undefined
+      phone !== undefined
     ) {
       if (
-        typeof phone !==
-        "string"
+        typeof phone !== "string"
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            "Phone must be text",
+          message: "Phone must be text",
         });
       }
 
-      user.phone =
-        phone.trim();
+      user.phone = phone.trim();
     }
 
     // -----------------------------------------------------
@@ -2382,22 +2084,18 @@ const updateWorkspaceMember = async (
     // -----------------------------------------------------
 
     if (
-      location !==
-      undefined
+      location !== undefined
     ) {
       if (
-        typeof location !==
-        "string"
+        typeof location !== "string"
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            "Location must be text",
+          message: "Location must be text",
         });
       }
 
-      user.location =
-        location.trim();
+      user.location = location.trim();
     }
 
     // -----------------------------------------------------
@@ -2405,22 +2103,18 @@ const updateWorkspaceMember = async (
     // -----------------------------------------------------
 
     if (
-      timeZone !==
-      undefined
+      timeZone !== undefined
     ) {
       if (
-        typeof timeZone !==
-        "string"
+        typeof timeZone !== "string"
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            "Time zone must be text",
+          message: "Time zone must be text",
         });
       }
 
-      user.timeZone =
-        timeZone.trim();
+      user.timeZone = timeZone.trim();
     }
 
     // -----------------------------------------------------
@@ -2428,8 +2122,7 @@ const updateWorkspaceMember = async (
     // -----------------------------------------------------
 
     if (
-      email !==
-      undefined
+      email !== undefined
     ) {
       const normalizedEmail =
         validateMemberEmail(
@@ -2437,26 +2130,20 @@ const updateWorkspaceMember = async (
           res
         );
 
-      if (
-        !normalizedEmail
-      ) {
+      if (!normalizedEmail) {
         return;
       }
 
       const duplicateUser =
         await User.findOne({
-          email:
-            normalizedEmail,
+          email: normalizedEmail,
 
           _id: {
-            $ne:
-              user._id,
+            $ne: user._id,
           },
         });
 
-      if (
-        duplicateUser
-      ) {
+      if (duplicateUser) {
         return res.status(409).json({
           success: false,
           message:
@@ -2467,24 +2154,15 @@ const updateWorkspaceMember = async (
       const duplicateWorkspaceMember =
         req.workspace.members.find(
           (candidate) =>
-            String(
-              candidate._id
-            ) !==
-              String(
-                membership._id
-              ) &&
-            candidate.status ===
-              "active" &&
+            String(candidate._id) !==
+              String(membership._id) &&
+            candidate.status === "active" &&
             candidate.email &&
-            normalizeEmail(
-              candidate.email
-            ) ===
+            normalizeEmail(candidate.email) ===
               normalizedEmail
         );
 
-      if (
-        duplicateWorkspaceMember
-      ) {
+      if (duplicateWorkspaceMember) {
         return res.status(409).json({
           success: false,
           message:
@@ -2492,11 +2170,47 @@ const updateWorkspaceMember = async (
         });
       }
 
-      user.email =
-        normalizedEmail;
+      user.email = normalizedEmail;
+      membership.email = normalizedEmail;
+    }
 
-      membership.email =
-        normalizedEmail;
+    // -----------------------------------------------------
+    // PROFILE IMAGE
+    // -----------------------------------------------------
+
+    if (profileImage !== undefined) {
+      if (typeof profileImage !== "string") {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Profile image must be a valid image data URL",
+        });
+      }
+
+      if (
+        profileImage.length >
+        MAX_PROFILE_IMAGE_LENGTH
+      ) {
+        return res.status(413).json({
+          success: false,
+          message:
+            "Profile image is too large. Please choose a smaller image.",
+        });
+      }
+
+      if (
+        profileImage !== "" &&
+        !PROFILE_IMAGE_DATA_URL_REGEX.test(profileImage)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Profile image must be a JPEG, PNG, or WebP image",
+        });
+      }
+
+      // An empty string clears the image.
+      user.profileImage = profileImage;
     }
 
     // -----------------------------------------------------
@@ -2509,11 +2223,9 @@ const updateWorkspaceMember = async (
     // SYNCHRONIZE MEMBERSHIP CACHE
     // -----------------------------------------------------
 
-    membership.email =
-      user.email;
+    membership.email = user.email;
 
-    membership.name =
-      user.name;
+    membership.name = user.name;
 
     membership.age =
       user.age ??
@@ -2547,22 +2259,23 @@ const updateWorkspaceMember = async (
       user.bio ||
       "";
 
-    membership.accountStatus =
-      "active";
+    membership.accountStatus = "active";
 
     await req.workspace.save();
 
+    const safeUpdatedMember =
+      buildSafeMember(
+        membership,
+        workspaceId
+      );
+
+    safeUpdatedMember.profileImage =
+      user.profileImage || "";
+
     return res.status(200).json({
       success: true,
-
-      message:
-        "Workspace member updated successfully",
-
-      member:
-        buildSafeMember(
-          membership,
-          workspaceId
-        ),
+      message: "Workspace member updated successfully",
+      member: safeUpdatedMember,
     });
   } catch (error) {
     console.error(
@@ -2571,8 +2284,7 @@ const updateWorkspaceMember = async (
     );
 
     if (
-      error.code ===
-      11000
+      error.code === 11000
     ) {
       return res.status(409).json({
         success: false,
@@ -2582,15 +2294,12 @@ const updateWorkspaceMember = async (
     }
 
     if (
-      error.name ===
-      "ValidationError"
+      error.name === "ValidationError"
     ) {
       return res.status(400).json({
         success: false,
         message:
-          getValidationMessages(
-            error
-          ).join(", "),
+          getValidationMessages(error).join(", "),
       });
     }
 
@@ -2624,23 +2333,17 @@ const removeWorkspaceMember = async (
     const { userId } = req.params;
 
     if (
-      !validateWorkspaceContext(
-        req,
-        res
-      )
+      !validateWorkspaceContext(req, res)
     ) {
       return;
     }
 
     const requesterMembership =
-      getRequesterMembership(
-        req
-      );
+      getRequesterMembership(req);
 
     if (
       !requesterMembership ||
-      requesterMembership.role !==
-        "leader"
+      requesterMembership.role !== "leader"
     ) {
       return res.status(403).json({
         success: false,
@@ -2657,8 +2360,7 @@ const removeWorkspaceMember = async (
 
     if (
       !membership ||
-      membership.status !==
-        "active"
+      membership.status !== "active"
     ) {
       return res.status(404).json({
         success: false,
@@ -2669,12 +2371,8 @@ const removeWorkspaceMember = async (
 
     if (
       membership.user &&
-      String(
-        membership.user
-      ) ===
-        String(
-          req.user._id
-        )
+      String(membership.user) ===
+        String(req.user._id)
     ) {
       return res.status(400).json({
         success: false,
@@ -2684,8 +2382,7 @@ const removeWorkspaceMember = async (
     }
 
     if (
-      membership.role ===
-      "leader"
+      membership.role === "leader"
     ) {
       return res.status(400).json({
         success: false,
@@ -2696,13 +2393,10 @@ const removeWorkspaceMember = async (
 
     const removedUserId =
       membership.user
-        ? String(
-            membership.user
-          )
+        ? String(membership.user)
         : null;
 
-    membership.status =
-      "inactive";
+    membership.status = "inactive";
 
     await req.workspace.save();
 
@@ -2718,22 +2412,16 @@ const removeWorkspaceMember = async (
 
     if (
       removedUserId &&
-      mongoose.isValidObjectId(
-        removedUserId
-      )
+      mongoose.isValidObjectId(removedUserId)
     ) {
       await Task.updateMany(
         {
-          workspaceId:
-            req.workspace._id,
-
-          assigneeIds:
-            removedUserId,
+          workspaceId: req.workspace._id,
+          assigneeIds: removedUserId,
         },
         {
           $pull: {
-            assigneeIds:
-              removedUserId,
+            assigneeIds: removedUserId,
           },
         }
       );
@@ -2741,17 +2429,12 @@ const removeWorkspaceMember = async (
 
     return res.status(200).json({
       success: true,
-
       message:
         "Member removed from workspace successfully",
 
-      memberId:
-        String(
-          membership._id
-        ),
+      memberId: String(membership._id),
 
-      userId:
-        removedUserId,
+      userId: removedUserId,
     });
   } catch (error) {
     console.error(
@@ -2801,12 +2484,10 @@ const updateWorkspace = async (
     // -----------------------------------------------------
 
     if (
-      name !==
-      undefined
+      name !== undefined
     ) {
       if (
-        typeof name !==
-          "string" ||
+        typeof name !== "string" ||
         !name.trim()
       ) {
         return res.status(400).json({
@@ -2841,8 +2522,7 @@ const updateWorkspace = async (
         });
       }
 
-      req.workspace.name =
-        trimmedName;
+      req.workspace.name = trimmedName;
     }
 
     // -----------------------------------------------------
@@ -2850,12 +2530,10 @@ const updateWorkspace = async (
     // -----------------------------------------------------
 
     if (
-      description !==
-      undefined
+      description !== undefined
     ) {
       if (
-        typeof description !==
-        "string"
+        typeof description !== "string"
       ) {
         return res.status(400).json({
           success: false,
@@ -2885,20 +2563,16 @@ const updateWorkspace = async (
     await req.workspace.save();
 
     await req.workspace.populate({
-      path:
-        "members.user",
-
+      path: "members.user",
       select:
-        "name email age gender projectRole currentJob phone location timeZone bio",
+        "name email age gender projectRole currentJob phone location timeZone bio profileImage",
     });
 
     return res.status(200).json({
       success: true,
       message:
         "Workspace information updated successfully",
-
-      workspace:
-        req.workspace,
+      workspace: req.workspace,
     });
   } catch (error) {
     console.error(
@@ -2907,15 +2581,12 @@ const updateWorkspace = async (
     );
 
     if (
-      error.name ===
-      "ValidationError"
+      error.name === "ValidationError"
     ) {
       return res.status(400).json({
         success: false,
         message:
-          getValidationMessages(
-            error
-          ).join(", "),
+          getValidationMessages(error).join(", "),
       });
     }
 
