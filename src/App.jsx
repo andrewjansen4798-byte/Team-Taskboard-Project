@@ -152,7 +152,7 @@ function App() {
   // =========================================================
 
   const [sidebarCollapsed, setSidebarCollapsed] =
-    useState(false);
+    useState(() => window.innerWidth <= 900);
 
   const [activeSection, setActiveSection] =
     useState("dashboard");
@@ -3212,7 +3212,7 @@ function App() {
     }
 
     const response = await fetch(
-      "http://localhost:5000/api/auth/change-email",
+      "http://localhost:5000/api/auth/email",
       {
         method: "PUT",
         headers: {
@@ -3329,7 +3329,7 @@ function App() {
     }
 
     const response = await fetch(
-      "http://localhost:5000/api/auth/change-password",
+      "http://localhost:5000/api/auth/password",
       {
         method: "PUT",
         headers: {
@@ -3369,13 +3369,25 @@ function App() {
     return data;
   }
 
-  return (
+    return (
     <div
       className={`dashboard-layout ${
         sidebarCollapsed
           ? "sidebar-collapsed"
           : ""
       }`}
+      onClick={(e) => {
+        if (window.innerWidth > 900 || sidebarCollapsed) {
+          return;
+        }
+
+        const insideSidebar = e.target.closest(".sidebar");
+        const clickedNavItem = e.target.closest(".nav-item");
+
+        if (!insideSidebar || clickedNavItem) {
+          setSidebarCollapsed(true);
+        }
+      }}
     >
       {/* =====================================================
           SIDEBAR

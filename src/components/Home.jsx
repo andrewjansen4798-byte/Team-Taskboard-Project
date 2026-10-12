@@ -249,7 +249,7 @@ function Home({
                 </motion.h1>
 
                 <motion.p variants={fadeInUp}>
-                  Create a new workspace or join an existing
+                  Create a new workspace or join an existing{" "}
                   <br className="desktop-break" />
                   workspace to start collaborating with your team.
                 </motion.p>
@@ -288,7 +288,7 @@ function Home({
                 </motion.h1>
 
                 <motion.p variants={fadeInUp}>
-                  CollabBoard helps teams organize tasks, track progress,
+                  CollabBoard helps teams organize tasks, track progress,{" "}
                   <br className="desktop-break" />
                   and work together in one simple workspace.
                 </motion.p>

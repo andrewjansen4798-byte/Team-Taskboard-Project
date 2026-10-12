@@ -905,6 +905,22 @@
         min-height: 100px;
     }
 }
+/* The chart scrolls sideways on small screens instead of being squashed */
+@media (max-width: 900px) {
+  .reports-title-area {
+    width: auto;
+    max-width: 100%;
+  }
+
+  .reports-chart-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .reports-chart {
+    min-width: 600px;
+  }
+}
 
 
 

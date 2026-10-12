@@ -1,7 +1,3 @@
-/* =========================================================
-   BOARD PAGE
-========================================================= */
-
 .board-page {
   width: 100%;
   min-height: 100%;
@@ -9,10 +5,6 @@
   background: #f0eded;
   color: #e8e8e9;
 }
-
-/* =========================================================
-   BREADCRUMB
-========================================================= */
 
 .board-breadcrumb {
   display: flex;
@@ -31,10 +23,6 @@
 .breadcrumb-slash {
   color: #a0aec0;
 }
-
-/* =========================================================
-   PAGE HEADER
-========================================================= */
 
 .board-page-header {
   display: flex;
@@ -56,10 +44,6 @@
   align-items: center;
   gap: 10px;
 }
-
-/* =========================================================
-   BOARD TITLE + TEAM NAME
-========================================================= */
 
 .board-title-group {
   display: flex;
@@ -108,10 +92,6 @@
   color: #2563eb;
 }
 
-/* =========================================================
-   TEAM NAME EDIT MODE
-========================================================= */
-
 .board-team-edit {
   display: flex;
   align-items: center;
@@ -152,10 +132,6 @@
   background: #1d4ed8;
 }
 
-/* =========================================================
-   TOOLBAR
-========================================================= */
-
 .board-toolbar {
   display: flex;
   align-items: center;
@@ -163,8 +139,6 @@
   width: 100%;
   margin-bottom: 24px;
 }
-
-/* SEARCH */
 
 .board-search-wrapper {
   position: relative;
@@ -203,10 +177,6 @@
   color: #172033;
   pointer-events: none;
 }
-
-/* =========================================================
-   MEMBER AVATARS
-========================================================= */
 
 .board-member-avatars {
   display: flex;
@@ -261,10 +231,6 @@
   font-size: 13px;
 }
 
-/* =========================================================
-   FILTER
-========================================================= */
-
 .board-filter-button {
   min-width: 120px;
   height: 48px;
@@ -297,10 +263,6 @@
   top: 1px !important;
 }
 
-/* =========================================================
-   KANBAN BOARD
-========================================================= */
-
 .kanban-board {
   display: grid;
   grid-template-columns:
@@ -310,10 +272,6 @@
   align-items: start;
 }
 
-/* =========================================================
-   COLUMN
-========================================================= */
-
 .board-column {
   min-width: 0;
   min-height: 550px;
@@ -322,10 +280,6 @@
   border-radius: 7px;
   overflow: hidden;
 }
-
-/* =========================================================
-   COLUMN HEADER
-========================================================= */
 
 .board-column-header {
   min-height: 58px;
@@ -368,10 +322,6 @@
   font-weight: 800;
 }
 
-/* =========================================================
-   COLUMN CONTENT
-========================================================= */
-
 .board-column-content {
   padding: 8px;
   max-height: calc(100vh - 255px);
@@ -386,10 +336,6 @@
   background: #cbd5e1;
   border-radius: 10px;
 }
-
-/* =========================================================
-   TASK CARD
-========================================================= */
 
 .board-task-card {
   position: relative;
@@ -413,10 +359,6 @@
     0 5px 15px rgba(15, 23, 42, 0.08);
 }
 
-/* =========================================================
-   TASK TITLE
-========================================================= */
-
 .board-task-title {
   margin: 0 0 8px;
   font-size: 17px;
@@ -425,20 +367,12 @@
   color: #172033;
 }
 
-/* =========================================================
-   DESCRIPTION
-========================================================= */
-
 .board-task-description {
   margin: 0 0 12px;
   color: #64748b;
   font-size: 13px;
   line-height: 1.5;
 }
-
-/* =========================================================
-   PRIORITY TAG
-========================================================= */
 
 .board-priority-tag {
   display: inline-flex;
@@ -468,10 +402,6 @@
   color: #1d4ed8;
 }
 
-/* =========================================================
-   TASK FOOTER
-========================================================= */
-
 .board-task-footer {
   display: flex;
   align-items: center;
@@ -494,10 +424,6 @@
   line-height: 1;
   flex-shrink: 0;
 }
-
-/* =========================================================
-   MULTIPLE TASK ASSIGNEE AVATARS
-========================================================= */
 
 .board-assignee-avatars {
   display: flex;
@@ -576,10 +502,6 @@
   transform: translateY(-1px);
 }
 
-/* =========================================================
-   TASK ACTIONS
-========================================================= */
-
 .board-task-actions {
   display: flex;
   align-items: center;
@@ -627,10 +549,6 @@
   background: #fee2e2;
 }
 
-/* =========================================================
-   EMPTY COLUMN
-========================================================= */
-
 .board-empty-column {
   padding: 35px 15px;
   text-align: center;
@@ -638,17 +556,9 @@
   font-size: 13px;
 }
 
-/* =========================================================
-   MOBILE / HIDDEN FILTERS
-========================================================= */
-
 .board-hidden-filters {
   display: none;
 }
-
-/* =========================================================
-   RESPONSIVE
-========================================================= */
 
 @media (max-width: 1200px) {
   .kanban-board {
@@ -688,17 +598,9 @@
   }
 }
 
-/* =========================================================
-   FILTER WRAPPER
-========================================================= */
-
 .filter-wrapper {
   position: relative;
 }
-
-/* =========================================================
-   FILTER BUTTON
-========================================================= */
 
 .board-filter-button {
   display: flex;
@@ -726,10 +628,6 @@
   font-size: 18px;
 }
 
-/* =========================================================
-   FILTER POPUP
-========================================================= */
-
 .filter-popup {
   position: absolute;
   top: calc(100% + 8px);
@@ -746,10 +644,6 @@
   overflow: hidden;
 }
 
-/* =========================================================
-   FILTER SIDEBAR
-========================================================= */
-
 .filter-sidebar {
   width: 150px;
   padding: 12px 0;
@@ -760,10 +654,6 @@
   min-height: 310px;
 }
 
-/* =========================================================
-   FILTER SIDEBAR TITLE
-========================================================= */
-
 .filter-sidebar-title {
   padding: 4px 18px 12px;
   font-size: 11px;
@@ -771,10 +661,6 @@
   color: #94a3b8;
   letter-spacing: 0.06em;
 }
-
-/* =========================================================
-   FILTER SIDEBAR ITEMS
-========================================================= */
 
 .filter-sidebar-item {
   display: block;
@@ -802,10 +688,6 @@
   font-weight: 600;
 }
 
-/* =========================================================
-   CLEAR ALL AT BOTTOM OF SIDEBAR
-========================================================= */
-
 .filter-sidebar-footer {
   margin-top: auto;
   padding: 12px 12px 10px;
@@ -829,18 +711,10 @@
   background: #eff6ff;
 }
 
-/* =========================================================
-   FILTER CONTENT
-========================================================= */
-
 .filter-content {
   flex: 1;
   padding: 20px;
 }
-
-/* =========================================================
-   FILTER HEADER
-========================================================= */
 
 .filter-content-header {
   margin-bottom: 12px;
@@ -858,10 +732,6 @@
   color: #94a3b8;
   font-size: 12px;
 }
-
-/* =========================================================
-   FILTER SEARCH WRAPPER
-========================================================= */
 
 .filter-search-wrapper {
   position: relative;
@@ -917,10 +787,6 @@
   background: #f1f5f9;
 }
 
-/* =========================================================
-   FILTER OPTIONS LIST
-========================================================= */
-
 .filter-options-list {
   max-height: 190px;
   overflow-y: auto;
@@ -934,10 +800,6 @@
   background: #cbd5e1;
   border-radius: 10px;
 }
-
-/* =========================================================
-   FILTER OPTIONS
-========================================================= */
 
 .filter-option {
   display: flex;
@@ -983,20 +845,12 @@
   flex: 1;
 }
 
-/* =========================================================
-   NO FILTER RESULTS
-========================================================= */
-
 .no-filter-options {
   padding: 20px 6px;
   text-align: center;
   color: #94a3b8;
   font-size: 13px;
 }
-
-/* =========================================================
-   FILTER BUTTON - NO DROPDOWN ARROW
-========================================================= */
 
 .board-filter-button {
   display: inline-flex;
@@ -1036,24 +890,16 @@
     0 0 0 3px rgba(37, 99, 235, 0.08);
 }
 
-/* Remove any old arrow/icon classes that may still exist */
-
 .board-filter-button .filter-arrow,
 .board-filter-button .rotate-icon,
 .board-filter-button svg.rotate-icon {
   display: none !important;
 }
 
-/* Keep actual Lucide Filter icon visible */
-
 .board-filter-button > svg {
   display: inline-block;
   flex: 0 0 auto;
 }
-
-/* =========================================================
-   TASK THREE-DOT MENU
-========================================================= */
 
 .task-actions-wrapper {
   position: absolute;
@@ -1088,10 +934,6 @@
   outline: none;
 }
 
-/* =========================================================
-   THREE-DOT POPUP
-========================================================= */
-
 .task-actions-menu {
   position: absolute;
   top: 36px;
@@ -1105,10 +947,6 @@
     0 8px 24px rgba(15, 23, 42, 0.18);
   z-index: 99999;
 }
-
-/* =========================================================
-   MENU ITEMS
-========================================================= */
 
 .task-menu-item {
   width: 100%;
@@ -1135,10 +973,6 @@
   flex-shrink: 0;
 }
 
-/* =========================================================
-   EDIT TASK OVERLAY
-========================================================= */
-
 .edit-task-overlay {
   position: fixed;
   inset: 0;
@@ -1149,10 +983,6 @@
   background: rgba(15, 23, 42, 0.35);
   z-index: 10000;
 }
-
-/* =========================================================
-   EDIT TASK CARD
-========================================================= */
 
 .edit-task-modal {
   width: 480px;
@@ -1176,10 +1006,6 @@
   border-radius: 10px;
 }
 
-/* =========================================================
-   EDIT TASK HEADER
-========================================================= */
-
 .edit-task-header {
   display: flex;
   align-items: flex-start;
@@ -1199,10 +1025,6 @@
   font-size: 13px;
 }
 
-/* =========================================================
-   EDIT CLOSE
-========================================================= */
-
 .edit-task-close {
   width: 34px;
   height: 34px;
@@ -1218,10 +1040,6 @@
   background: #e2e8f0;
 }
 
-/* =========================================================
-   EDIT LABELS
-========================================================= */
-
 .edit-task-modal label {
   display: block;
   margin: 14px 0 7px;
@@ -1229,10 +1047,6 @@
   font-weight: 600;
   color: #334155;
 }
-
-/* =========================================================
-   EDIT INPUTS
-========================================================= */
 
 .edit-task-modal input,
 .edit-task-modal textarea,
@@ -1257,10 +1071,6 @@
 .edit-task-modal select:focus {
   border-color: #2563eb;
 }
-
-/* =========================================================
-   EDIT MULTIPLE ASSIGNEE SELECTOR
-========================================================= */
 
 .edit-assignee-selector {
   position: relative;
@@ -1371,10 +1181,6 @@
   background: #eff6ff;
 }
 
-/* =========================================================
-   EDIT SELECTED ASSIGNEES
-========================================================= */
-
 .edit-selected-assignees {
   display: flex;
   flex-wrap: wrap;
@@ -1415,10 +1221,6 @@
   color: #1d4ed8;
 }
 
-/* =========================================================
-   EDIT BUTTONS
-========================================================= */
-
 .edit-task-buttons {
   display: flex;
   justify-content: flex-end;
@@ -1450,10 +1252,6 @@
 .edit-save-button:hover {
   background: #1d4ed8;
 }
-
-/* =========================================================
-   ADD TASK BUTTON
-========================================================= */
 
 .add-task-trigger {
   display: inline-flex;
@@ -1493,10 +1291,6 @@
   font-weight: 400;
 }
 
-/* =========================================================
-   ADD TASK OVERLAY
-========================================================= */
-
 .add-task-overlay {
   position: fixed;
   inset: 0;
@@ -1507,10 +1301,6 @@
   padding: 20px;
   background: rgba(15, 23, 42, 0.35);
 }
-
-/* =========================================================
-   ADD TASK MODAL
-========================================================= */
 
 .add-task-modal {
   width: 520px;
@@ -1534,10 +1324,6 @@
   border-radius: 10px;
 }
 
-/* =========================================================
-   ADD TASK MODAL HEADER
-========================================================= */
-
 .add-task-modal-header {
   display: flex;
   align-items: flex-start;
@@ -1559,10 +1345,6 @@
   font-size: 13px;
 }
 
-/* =========================================================
-   ADD TASK CLOSE
-========================================================= */
-
 .add-task-close {
   width: 34px;
   height: 34px;
@@ -1583,10 +1365,6 @@
 .add-task-close:hover {
   background: #e2e8f0;
 }
-
-/* =========================================================
-   ADD TASK FORM
-========================================================= */
 
 .add-task-form {
   width: 100%;
@@ -1648,10 +1426,6 @@
     0 0 0 3px rgba(37, 99, 235, 0.08);
 }
 
-/* =========================================================
-   ADD TASK FORM ROW
-========================================================= */
-
 .form-row {
   display: grid;
   grid-template-columns:
@@ -1660,10 +1434,6 @@
   gap: 14px;
   align-items: start;
 }
-
-/* =========================================================
-   ADD TASK MULTIPLE ASSIGNEE SELECTOR
-========================================================= */
 
 .assignee-selector {
   position: relative;
@@ -1701,10 +1471,6 @@
 .assignee-placeholder {
   color: #94a3b8;
 }
-
-/* =========================================================
-   ASSIGNEE DROPDOWN
-========================================================= */
 
 .assignee-dropdown {
   position: absolute;
@@ -1821,10 +1587,6 @@
   background: #eff6ff;
 }
 
-/* =========================================================
-   SELECTED ASSIGNEE TAGS
-========================================================= */
-
 .selected-assignees {
   display: flex;
   flex-wrap: wrap;
@@ -1865,10 +1627,6 @@
   color: #1d4ed8;
 }
 
-/* =========================================================
-   ADD TASK MODAL ACTIONS
-========================================================= */
-
 .add-task-modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -1908,10 +1666,6 @@
   background: #1d4ed8;
 }
 
-/* =========================================================
-   ADD TASK / EDIT TASK RESPONSIVE
-========================================================= */
-
 @media (max-width: 650px) {
   .form-row {
     grid-template-columns: 1fr;
@@ -1935,5 +1689,234 @@
   .edit-cancel-button,
   .edit-save-button {
     flex: 1;
+  }
+}
+
+/* =========================================================
+   BOARD PAGE MOBILE ALIGNMENT
+   ========================================================= */
+
+@media (max-width: 800px) {
+  .board-page {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 18px 12px calc(96px + env(safe-area-inset-bottom));
+    overflow-x: clip;
+  }
+
+  .board-breadcrumb {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .board-title-group {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+  }
+
+  .board-page-title {
+    font-size: clamp(28px, 8vw, 34px);
+  }
+
+  .board-team-name {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .board-team-name > span {
+    min-width: 0;
+    font-size: clamp(14px, 4vw, 17px);
+    overflow-wrap: anywhere;
+  }
+
+  .board-team-edit {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .board-team-edit input {
+    width: min(220px, 100%);
+    min-width: 0;
+  }
+
+  .board-page .board-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .board-page .board-search-wrapper {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .board-page .board-search {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .board-page .board-member-avatars {
+    grid-column: 1;
+    grid-row: 2;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .board-page .filter-wrapper {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .board-page .board-filter-button {
+    min-width: 0;
+    max-width: 100%;
+    padding: 0 12px;
+  }
+
+  .board-page .board-add-task-toolbar {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    position: static !important;
+    inset: auto !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    transform: none;
+  }
+
+  .board-page .board-add-task-toolbar > *,
+  .board-page .board-add-task-toolbar button,
+  .board-page .board-add-task-toolbar .add-task-trigger {
+    position: static !important;
+    inset: auto !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    margin: 0;
+    max-width: 100%;
+    transform: none;
+  }
+
+  .board-page .kanban-board {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .board-page .board-column {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 300px;
+  }
+
+  .board-page .board-column-header {
+    min-width: 0;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .board-page .board-column-title-row {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .board-page .board-column-content {
+    max-height: none;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .board-page .board-task-card {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .board-page .board-task-footer {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .board-page .board-due-date {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .board-page .board-assignee-avatars {
+    flex-shrink: 0;
+  }
+
+  .board-page .filter-popup {
+    left: auto;
+    right: 0;
+    width: min(500px, calc(100vw - 56px));
+    max-width: calc(100vw - 56px);
+  }
+
+  .board-page .filter-sidebar {
+    width: 112px;
+    flex: 0 0 112px;
+  }
+
+  .board-page .filter-content {
+    min-width: 0;
+    padding: 14px 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .board-page {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .board-page .board-toolbar {
+    column-gap: 8px;
+  }
+
+  .board-page .board-filter-button {
+    gap: 6px;
+    padding-right: 9px;
+    padding-left: 9px;
+  }
+
+  .board-page .board-column-header {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .board-page .board-task-card {
+    padding: 12px;
   }
 }

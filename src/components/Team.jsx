@@ -391,6 +391,14 @@ function Team({
     return initials || "TM";
   }
 
+    function renderAvatarContent(member) {
+    if (member?.profileImage) {
+      return <img src={member.profileImage} alt="" />;
+    }
+
+    return getMemberInitials(member);
+  }
+
   function getMemberRole(member) {
     return (
       member?.role ||
