@@ -399,6 +399,10 @@ function App() {
             membership?.bio ||
             user?.bio ||
             "",
+          profileImage:
+            membership?.profileImage ||
+            user?.profileImage ||
+            "",
 
           role:
             normalizedRole === "leader"
@@ -1300,6 +1304,9 @@ function App() {
       phone: updatedMember.phone ?? "",
       location: updatedMember.location ?? "",
       timeZone: updatedMember.timeZone ?? "",
+      // When undefined, JSON.stringify leaves this field out, so
+      // normal text edits never resend the profile picture.
+      profileImage: updatedMember.profileImage,
     };
 
     // Email changes for registered accounts require the current
