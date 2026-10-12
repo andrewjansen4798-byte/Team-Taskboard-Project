@@ -702,3 +702,9 @@
     transform-origin: center;
   }
 }
+/* No shrinking of the card on small phones */
+@media (max-width: 600px) {
+  .signup-card {
+    transform: none;
+  }
+}

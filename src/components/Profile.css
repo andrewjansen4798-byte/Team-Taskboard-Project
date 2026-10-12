@@ -1133,3 +1133,17 @@
     width: 100%;
   }
 }
+@media (max-width: 600px) {
+  .profile-card-title {
+    min-width: 0;
+  }
+
+  .profile-hero-info > p {
+    overflow-wrap: anywhere;
+  }
+
+  .profile-details-grid strong {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

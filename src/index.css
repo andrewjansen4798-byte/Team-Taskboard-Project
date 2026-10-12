@@ -2,20 +2,14 @@
    COLLABBOARD GLOBAL STYLES
    ========================================================= */
 
-/* ---------------------------------------------------------
-   GLOBAL RESET
-   --------------------------------------------------------- */
-
+/* Global reset */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-/* ---------------------------------------------------------
-   ROOT
-   --------------------------------------------------------- */
-
+/* Root typography and rendering */
 :root {
   font-family:
     Inter,
@@ -31,68 +25,58 @@
 
   line-height: 1.5;
   font-weight: 400;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  color: #111827;
+  background: #f6f7fb;
 }
 
-/* ---------------------------------------------------------
-   HTML
-   --------------------------------------------------------- */
-
+/* Document */
 html {
+  width: 100%;
   min-width: 320px;
   min-height: 100%;
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
-/* ---------------------------------------------------------
-   BODY
-   --------------------------------------------------------- */
-
+/* Page */
 body {
-  margin: 0;
+  width: 100%;
   min-width: 320px;
   min-height: 100vh;
-
+  min-height: 100dvh;
+  margin: 0;
   font-family: inherit;
+  overflow-x: clip;
 }
 
-/* ---------------------------------------------------------
-   ROOT APPLICATION CONTAINER
-   --------------------------------------------------------- */
-
+/* React mount */
 #root {
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
+  isolation: isolate;
 }
 
-/* ---------------------------------------------------------
-   FORM ELEMENTS
-   --------------------------------------------------------- */
-
+/* Form controls inherit app typography and stay in their parent. */
 button,
 input,
 textarea,
 select {
+  max-width: 100%;
   font: inherit;
 }
 
-/* ---------------------------------------------------------
-   BUTTONS
-   --------------------------------------------------------- */
-
 button {
   margin: 0;
+  touch-action: manipulation;
 }
 
-/* ---------------------------------------------------------
-   IMAGES / MEDIA
-   --------------------------------------------------------- */
-
+/* Media */
 img,
 picture,
 video,
@@ -102,26 +86,23 @@ svg {
   max-width: 100%;
 }
 
-/* ---------------------------------------------------------
-   LINKS
-   --------------------------------------------------------- */
+img,
+picture,
+video {
+  height: auto;
+}
 
+/* Links */
 a {
   color: inherit;
 }
 
-/* ---------------------------------------------------------
-   PARAGRAPHS
-   --------------------------------------------------------- */
-
+/* Paragraphs */
 p {
   margin: 0;
 }
 
-/* ---------------------------------------------------------
-   HEADINGS
-   --------------------------------------------------------- */
-
+/* Headings */
 h1,
 h2,
 h3,
@@ -131,20 +112,36 @@ h6 {
   margin-top: 0;
 }
 
-/* ---------------------------------------------------------
-   LISTS
-   --------------------------------------------------------- */
-
+/* Lists */
 ul,
 ol {
   margin-top: 0;
 }
 
-/* ---------------------------------------------------------
-   TABLES
-   --------------------------------------------------------- */
-
+/* Tables */
 table {
+  max-width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
+}
+
+/* Better keyboard visibility */
+:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
