@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const mongoose = require("mongoose");
 const Workspace = require("../models/Workspace");
-const User = require("../models/User");
+const User = require("../models/user");
 const Task = require("../models/task");
 
 // =========================================================
