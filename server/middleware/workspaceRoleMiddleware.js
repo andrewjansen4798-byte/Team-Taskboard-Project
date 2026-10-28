@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const Workspace = require("../models/Workspace");
+const Workspace = require("../models/workspace");
 
 // =========================================================
 // CHECK WORKSPACE ROLE
