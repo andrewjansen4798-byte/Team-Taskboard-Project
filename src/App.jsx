@@ -26,6 +26,10 @@ import Home from "./components/Home";
 
 import SettingsPage from "./components/Settings";
 
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 // =========================================================
 // WORKSPACE / TASK DATA
 // =========================================================
@@ -469,7 +473,7 @@ function App() {
     }
 
     const response = await fetch(
-      `http://localhost:5000/api/workspaces/${targetWorkspaceId}/members`,
+      `${API_BASE_URL}/workspaces/${targetWorkspaceId}/members`,
       {
         method: "GET",
         headers: {
@@ -593,7 +597,7 @@ function App() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/workspaces",
+        `${API_BASE_URL}/workspaces`,
         {
           method: "GET",
           headers: {
@@ -899,7 +903,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/tasks/${targetWorkspaceId}`,
+        `${API_BASE_URL}/tasks/${targetWorkspaceId}`,
         {
           method: "GET",
           headers: {
@@ -1139,7 +1143,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/workspaces/${targetWorkspaceId}/members`,
+        `${API_BASE_URL}/workspaces/${targetWorkspaceId}/members`,
         {
           method: "POST",
           headers: {
@@ -1318,7 +1322,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/workspaces/${targetWorkspaceId}/members/${targetMemberIdentifier}`,
+        `${API_BASE_URL}/workspaces/${targetWorkspaceId}/members/${targetMemberIdentifier}`,
         {
           method: "PUT",
           headers: {
@@ -1573,7 +1577,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/workspaces/${targetWorkspaceId}/members/${targetMemberIdentifier}`,
+        `${API_BASE_URL}/workspaces/${targetWorkspaceId}/members/${targetMemberIdentifier}`,
         {
           method: "DELETE",
           headers: {
@@ -1707,7 +1711,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/tasks/${targetWorkspaceId}`,
+        `${API_BASE_URL}/tasks/${targetWorkspaceId}`,
         {
           method: "POST",
           headers: {
@@ -1764,7 +1768,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/tasks/${targetWorkspaceId}/${taskId}`,
+        `${API_BASE_URL}/tasks/${targetWorkspaceId}/${taskId}`,
         {
           method: "PUT",
           headers: {
@@ -1820,7 +1824,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/tasks/${targetWorkspaceId}/${taskId}`,
+        `${API_BASE_URL}/tasks/${targetWorkspaceId}/${taskId}`,
         {
           method: "DELETE",
           headers: {
@@ -1893,7 +1897,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/tasks/${targetWorkspaceId}/${taskId}`,
+        `${API_BASE_URL}/tasks/${targetWorkspaceId}/${taskId}`,
         {
           method: "PUT",
           headers: {
@@ -1976,7 +1980,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/workspaces/${targetWorkspaceId}`,
+        `${API_BASE_URL}/workspaces/${targetWorkspaceId}`,
         {
           method: "PUT",
           headers: {
@@ -3212,7 +3216,7 @@ function App() {
     }
 
     const response = await fetch(
-      "http://localhost:5000/api/auth/email",
+      `${API_BASE_URL}/auth/email`,
       {
         method: "PUT",
         headers: {
@@ -3329,7 +3333,7 @@ function App() {
     }
 
     const response = await fetch(
-      "http://localhost:5000/api/auth/password",
+      `${API_BASE_URL}/auth/password`,
       {
         method: "PUT",
         headers: {
@@ -3777,7 +3781,7 @@ function App() {
 
               try {
                 const response = await fetch(
-                  "http://localhost:5000/api/auth/account",
+                  `${API_BASE_URL}/auth/account`,
                   {
                     method: "DELETE",
                     headers: {
