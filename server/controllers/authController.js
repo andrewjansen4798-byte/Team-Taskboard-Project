@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const User = require("../models/User");
+const User = require("../models/user");
 const Workspace = require("../models/Workspace");
 const Task = require("../models/task");
 
