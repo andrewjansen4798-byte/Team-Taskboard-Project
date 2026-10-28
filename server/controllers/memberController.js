@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-const Workspace = require("../models/Workspace");
-const User = require("../models/User");
+const Workspace = require("../models/workspace");
+const User = require("../models/user");
 
 // =========================================================
 // CONSTANTS
