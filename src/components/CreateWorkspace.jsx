@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+  import.meta.env.VITE_API_URL || "https://team-taskboard-project.onrender.com";
 
 function CreateWorkspace({ onBack, onWorkspaceCreated }) {
   const [workspaceName, setWorkspaceName] = useState("");
