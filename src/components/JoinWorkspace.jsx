@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "https://team-taskboard-project.onrender.com";
+  import.meta.env.VITE_API_URL ||
+  "https://team-taskboard-project.onrender.com/api";
 
 function JoinWorkspace({ onBack, onWorkspaceJoined }) {
   const [inviteCode, setInviteCode] = useState("");
