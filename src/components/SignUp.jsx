@@ -2,7 +2,9 @@ import { useState } from "react";
 import "./SignUp.css";
 import { BriefcaseBusiness } from "lucide-react";
 
-const API_BASE_URL = "https://team-taskboard-project.onrender.com";
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000/api";
 
 function SignUp({ onSignIn }) {
   const [showPassword, setShowPassword] = useState(false);
