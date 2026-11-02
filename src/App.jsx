@@ -25,6 +25,7 @@ import Profile from "./components/Profile";
 import Home from "./components/Home";
 
 import SettingsPage from "./components/Settings";
+import { logActivity } from "./Utils/activity";
 
 
 const API_BASE_URL =
@@ -1735,6 +1736,12 @@ function App() {
       await loadWorkspaceTasks(
         String(targetWorkspaceId)
       );
+
+      logActivity({
+        type: "created",
+        member: authUser?.name,
+        taskTitle: payload.title,
+      });
     } catch (error) {
       console.error("Create task error:", error);
       window.alert(
@@ -1748,7 +1755,7 @@ function App() {
   // MOVE TASK
   // =========================================================
 
-  async function handleMoveTask(
+    async function handleMoveTask(
     taskId,
     newStatus
   ) {
@@ -1766,6 +1773,10 @@ function App() {
       );
       return;
     }
+
+    const movedTask = tasks.find(
+      (t) => String(t.id) === String(taskId)
+    );
 
     try {
       const response = await fetch(
@@ -1794,6 +1805,13 @@ function App() {
       await loadWorkspaceTasks(
         String(targetWorkspaceId)
       );
+
+      logActivity({
+        type: "status",
+        member: authUser?.name,
+        taskTitle: movedTask?.title,
+        newStatus,
+      });
     } catch (error) {
       console.error("Move task error:", error);
       window.alert(
@@ -1807,7 +1825,7 @@ function App() {
   // DELETE TASK
   // =========================================================
 
-  async function handleDeleteTask(taskId) {
+    async function handleDeleteTask(taskId) {
     const targetWorkspaceId =
       workspaceId ||
       localStorage.getItem("collabboardWorkspaceId") ||
@@ -1822,6 +1840,10 @@ function App() {
       );
       return;
     }
+
+    const deletedTask = tasks.find(
+      (t) => String(t.id) === String(taskId)
+    );
 
     try {
       const response = await fetch(
@@ -1846,6 +1868,12 @@ function App() {
       await loadWorkspaceTasks(
         String(targetWorkspaceId)
       );
+
+      logActivity({
+        type: "deleted",
+        member: authUser?.name,
+        taskTitle: deletedTask?.title,
+      });
     } catch (error) {
       console.error("Delete task error:", error);
       window.alert(
@@ -1921,6 +1949,12 @@ function App() {
       await loadWorkspaceTasks(
         String(targetWorkspaceId)
       );
+
+      logActivity({
+        type: "updated",
+        member: authUser?.name,
+        taskTitle: payload.title,
+      });
     } catch (error) {
       console.error("Edit task error:", error);
       window.alert(
