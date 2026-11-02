@@ -1,3 +1,4 @@
+
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -12,15 +13,36 @@ const taskRoutes = require("./routes/taskRoutes");
 const app = express();
 
 // =========================================================
-// MIDDLEWARE
+// CORS CONFIGURATION
 // =========================================================
+
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "https://collabboard-sepia.vercel.app",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+].filter(Boolean);
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "https://team-taskboard-project.onrender.com",
+    origin: (origin, callback) => {
+      // Allow requests without an Origin header, such as server-to-server
+      // requests and certain development tools.
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(
+        new Error(`CORS blocked this origin: ${origin}`)
+      );
+    },
     credentials: true,
   })
 );
+
+// =========================================================
+// MIDDLEWARE
+// =========================================================
 
 app.use(express.json());
 
@@ -74,9 +96,8 @@ const startServer = async () => {
     await connectDB();
 
     app.listen(PORT, () => {
-      console.log(
-        `CollabBoard server running on port ${PORT}`
-      );
+      console.log(`CollabBoard server running on port ${PORT}`);
+      console.log("Allowed frontend origins:", allowedOrigins);
     });
   } catch (error) {
     console.error(
