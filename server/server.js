@@ -1,4 +1,3 @@
-
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -9,6 +8,7 @@ const authRoutes = require("./routes/authRoutes");
 const workspaceRoutes = require("./routes/workspaceRoutes");
 const memberRoutes = require("./routes/memberRoutes");
 const taskRoutes = require("./routes/taskRoutes");
+const activityRoutes = require("./routes/activityRoutes");
 
 const app = express();
 
@@ -80,6 +80,12 @@ app.use("/api/workspaces", memberRoutes);
 // =========================================================
 
 app.use("/api/tasks", taskRoutes);
+
+// =========================================================
+// ACTIVITY ROUTES
+// =========================================================
+
+app.use("/api/activities", activityRoutes);
 
 // =========================================================
 // SERVER CONFIGURATION

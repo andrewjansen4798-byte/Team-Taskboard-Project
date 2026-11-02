@@ -19,6 +19,7 @@ import "./DashboardPage.css";
 function DashboardPage({
     tasks = [],
     members = [],
+    activities = [],
     onOpenBoard,
 }) {
     // =========================================================
@@ -40,43 +41,6 @@ function DashboardPage({
         hoveredStatus,
         setHoveredStatus,
     ] = useState(null);
-
-    // =========================================================
-    // ACTIVITIES
-    // =========================================================
-    const [
-        activities,
-        setActivities,
-    ] = useState(() => {
-        try {
-            const savedActivities =
-                JSON.parse(
-                    localStorage.getItem(
-                        "collabboardActivities"
-                    )
-                ) || [];
-
-            return [
-                ...savedActivities,
-            ].sort(
-                (a, b) => {
-                    const dateA =
-                        new Date(
-                            a.timestamp
-                        ).getTime();
-
-                    const dateB =
-                        new Date(
-                            b.timestamp
-                        ).getTime();
-
-                    return dateB - dateA;
-                }
-            );
-        } catch {
-            return [];
-        }
-    });
 
     // =========================================================
     // ACTIVITY CLOCK
@@ -105,69 +69,6 @@ function DashboardPage({
         return () => {
             window.clearTimeout(timeoutId);
             window.clearInterval(intervalId);
-        };
-    }, []);
-
-    // =========================================================
-    // REFRESH ACTIVITIES
-    // =========================================================
-    useEffect(() => {
-        const loadActivities = () => {
-            try {
-                const savedActivities =
-                    JSON.parse(
-                        localStorage.getItem(
-                            "collabboardActivities"
-                        )
-                    ) || [];
-
-                const sortedActivities =
-                    [
-                        ...savedActivities,
-                    ].sort(
-                        (a, b) => {
-                            const dateA =
-                                new Date(
-                                    a.timestamp
-                                ).getTime();
-
-                            const dateB =
-                                new Date(
-                                    b.timestamp
-                                ).getTime();
-
-                            return dateB - dateA;
-                        }
-                    );
-
-                setActivities(
-                    sortedActivities
-                );
-            } catch {
-                setActivities([]);
-            }
-        };
-
-        window.addEventListener(
-            "collabboardActivityUpdated",
-            loadActivities
-        );
-
-        window.addEventListener(
-            "storage",
-            loadActivities
-        );
-
-        return () => {
-            window.removeEventListener(
-                "collabboardActivityUpdated",
-                loadActivities
-            );
-
-            window.removeEventListener(
-                "storage",
-                loadActivities
-            );
         };
     }, []);
 
@@ -551,7 +452,8 @@ function DashboardPage({
 
             return "deadline-normal";
         };
-            // =========================================================
+
+    // =========================================================
     // UPCOMING TASK ASSIGNEE DISPLAY
     // =========================================================
     const getUpcomingAssigneeText =
@@ -1421,7 +1323,8 @@ function DashboardPage({
                         </div>
                     </div>
                 </section>
-                                {/* =================================================
+
+                {/* =================================================
                     UPCOMING DUE TASKS
                 ================================================= */}
                 <section className="dashboard-card dashboard-upcoming-card">
@@ -1723,7 +1626,8 @@ function DashboardPage({
                     )}
                 </div>
             </section>
-                        {/* =================================================
+
+            {/* =================================================
                 TEAM PERFORMANCE
             ================================================= */}
             {teamSummary.length > 0 && (

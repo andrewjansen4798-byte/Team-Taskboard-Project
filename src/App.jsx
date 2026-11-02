@@ -25,7 +25,6 @@ import Profile from "./components/Profile";
 import Home from "./components/Home";
 
 import SettingsPage from "./components/Settings";
-import { logActivity } from "./Utils/activity";
 
 
 const API_BASE_URL =
@@ -36,8 +35,9 @@ const API_BASE_URL =
 // WORKSPACE / TASK DATA
 // =========================================================
 //
-// Workspace members and tasks are loaded from the backend.
-// MongoDB is the source of truth for the active workspace.
+// Workspace members, tasks and activity are loaded from the
+// backend. MongoDB is the source of truth for the active
+// workspace.
 //
 // =========================================================
 
@@ -576,6 +576,10 @@ function App() {
       members
     );
 
+    await loadWorkspaceActivities(
+      String(targetWorkspaceId)
+    );
+
     return members;
   }
 
@@ -636,6 +640,7 @@ function App() {
         setCurrentWorkspaceRole(null);
         setTeamMembers([]);
         setTasks([]);
+        setActivities([]);
         setWorkspaceName("CollabBoard");
 
         localStorage.removeItem(
@@ -741,6 +746,7 @@ function App() {
 
       setTasks([]);
       setTeamMembers([]);
+      setActivities([]);
 
       await loadWorkspaceData(
         String(selectedWorkspaceId)
@@ -818,6 +824,18 @@ function App() {
   // =========================================================
 
   const [tasks, setTasks] =
+    useState([]);
+
+  // =========================================================
+  // ACTIVITY STATE
+  // =========================================================
+  //
+  // Team activity is stored in MongoDB by the backend and
+  // shared by everyone in the workspace.
+  //
+  // =========================================================
+
+  const [activities, setActivities] =
     useState([]);
 
   // =========================================================
@@ -958,6 +976,95 @@ function App() {
       throw error;
     }
   }
+
+  // =========================================================
+  // LOAD WORKSPACE ACTIVITIES
+  // =========================================================
+  //
+  // Activity is secondary data. A failure here must never
+  // break the workspace, so errors are logged and ignored.
+  //
+  // =========================================================
+
+  async function loadWorkspaceActivities(
+    targetWorkspaceId
+  ) {
+    const token =
+      localStorage.getItem("collabboardToken");
+
+    if (!targetWorkspaceId || !token) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/activities/${targetWorkspaceId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        return;
+      }
+
+      const backendActivities =
+        Array.isArray(data.activities)
+          ? data.activities
+          : [];
+
+      setActivities(
+        backendActivities.map((activity) => ({
+          id: String(activity._id || activity.id),
+          type: activity.type,
+          member: activity.memberName || "Team Member",
+          taskTitle: activity.taskTitle || "",
+          newStatus: activity.newStatus || null,
+          timestamp: activity.createdAt,
+        }))
+      );
+    } catch (error) {
+      console.error(
+        "Load workspace activities error:",
+        error
+      );
+    }
+  }
+
+  // =========================================================
+  // KEEP DASHBOARD ACTIVITY FRESH
+  // =========================================================
+  //
+  // While the Dashboard is open, refresh activity every 30
+  // seconds so teammates' actions appear without a reload.
+  //
+  // =========================================================
+
+  useEffect(() => {
+    if (
+      !isLoggedIn ||
+      !workspaceId ||
+      activeSection !== "dashboard"
+    ) {
+      return;
+    }
+
+    loadWorkspaceActivities(workspaceId);
+
+    const intervalId = window.setInterval(() => {
+      loadWorkspaceActivities(workspaceId);
+    }, 30000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, workspaceId, activeSection]);
 
   function getTaskAssigneeIds(task) {
     if (!task) {
@@ -1196,7 +1303,8 @@ function App() {
       );
     }
   }
-    // =========================================================
+
+  // =========================================================
   // EDIT TEAM MEMBER
   // =========================================================
 
@@ -1737,11 +1845,9 @@ function App() {
         String(targetWorkspaceId)
       );
 
-      logActivity({
-        type: "created",
-        member: authUser?.name,
-        taskTitle: payload.title,
-      });
+      await loadWorkspaceActivities(
+        String(targetWorkspaceId)
+      );
     } catch (error) {
       console.error("Create task error:", error);
       window.alert(
@@ -1755,7 +1861,7 @@ function App() {
   // MOVE TASK
   // =========================================================
 
-    async function handleMoveTask(
+  async function handleMoveTask(
     taskId,
     newStatus
   ) {
@@ -1773,10 +1879,6 @@ function App() {
       );
       return;
     }
-
-    const movedTask = tasks.find(
-      (t) => String(t.id) === String(taskId)
-    );
 
     try {
       const response = await fetch(
@@ -1806,12 +1908,9 @@ function App() {
         String(targetWorkspaceId)
       );
 
-      logActivity({
-        type: "status",
-        member: authUser?.name,
-        taskTitle: movedTask?.title,
-        newStatus,
-      });
+      await loadWorkspaceActivities(
+        String(targetWorkspaceId)
+      );
     } catch (error) {
       console.error("Move task error:", error);
       window.alert(
@@ -1825,7 +1924,7 @@ function App() {
   // DELETE TASK
   // =========================================================
 
-    async function handleDeleteTask(taskId) {
+  async function handleDeleteTask(taskId) {
     const targetWorkspaceId =
       workspaceId ||
       localStorage.getItem("collabboardWorkspaceId") ||
@@ -1840,10 +1939,6 @@ function App() {
       );
       return;
     }
-
-    const deletedTask = tasks.find(
-      (t) => String(t.id) === String(taskId)
-    );
 
     try {
       const response = await fetch(
@@ -1869,11 +1964,9 @@ function App() {
         String(targetWorkspaceId)
       );
 
-      logActivity({
-        type: "deleted",
-        member: authUser?.name,
-        taskTitle: deletedTask?.title,
-      });
+      await loadWorkspaceActivities(
+        String(targetWorkspaceId)
+      );
     } catch (error) {
       console.error("Delete task error:", error);
       window.alert(
@@ -1950,11 +2043,9 @@ function App() {
         String(targetWorkspaceId)
       );
 
-      logActivity({
-        type: "updated",
-        member: authUser?.name,
-        taskTitle: payload.title,
-      });
+      await loadWorkspaceActivities(
+        String(targetWorkspaceId)
+      );
     } catch (error) {
       console.error("Edit task error:", error);
       window.alert(
@@ -2089,7 +2180,8 @@ function App() {
       );
     }
   }
-    // =========================================================
+
+  // =========================================================
   // REORDER TASK
   // =========================================================
 
@@ -2785,6 +2877,7 @@ function App() {
           // Reset workspace-specific state.
           setTeamMembers([]);
           setTasks([]);
+          setActivities([]);
           setCurrentWorkspaceRole(null);
           setWorkspaceLoadError(null);
           setWorkspaceLoading(true);
@@ -3010,6 +3103,7 @@ function App() {
             setCurrentWorkspaceRole("leader");
             setTeamMembers([]);
             setTasks([]);
+            setActivities([]);
 
             setWorkspaceId(
               String(newWorkspaceId)
@@ -3124,6 +3218,7 @@ function App() {
             setCurrentWorkspaceRole(null);
             setTeamMembers([]);
             setTasks([]);
+            setActivities([]);
 
             setWorkspaceId(
               String(joinedWorkspaceId)
@@ -3192,7 +3287,8 @@ function App() {
   // transition.
   //
   // =========================================================
-    async function handleChangeEmail(emailPayload) {
+
+  async function handleChangeEmail(emailPayload) {
     const token =
       localStorage.getItem(
         "collabboardToken"
@@ -3408,7 +3504,7 @@ function App() {
     return data;
   }
 
-    return (
+  return (
     <div
       className={`dashboard-layout ${
         sidebarCollapsed
@@ -3703,6 +3799,7 @@ function App() {
               setActiveSection("dashboard");
               setWorkspaceName("CollabBoard");
               setTasks([]);
+              setActivities([]);
               setTeamMembers([]);
               handleClearFilters();
             }}
@@ -3857,6 +3954,7 @@ function App() {
                 setWorkspaceLoading(false);
                 setWorkspaceLoadError(null);
                 setTasks([]);
+                setActivities([]);
                 setTeamMembers([]);
                 handleClearFilters();
 
@@ -3897,6 +3995,7 @@ function App() {
           <DashboardPage
             tasks={tasks}
             members={teamMembers}
+            activities={activities}
             onOpenBoard={() =>
               setActiveSection("board")
             }

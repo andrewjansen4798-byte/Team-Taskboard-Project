@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 
 const Task = require("../models/task");
 
+const { logActivity } = require("./activityController");
+
 // =========================================================
 // CONSTANTS
 // =========================================================
@@ -99,10 +101,6 @@ const validateWorkspaceContext = (
     workspaceId,
   } = req.params;
 
-  // -------------------------------------------------------
-  // CHECK WORKSPACE CONTEXT
-  // -------------------------------------------------------
-
   if (
     !req.workspace ||
     !Array.isArray(
@@ -118,10 +116,6 @@ const validateWorkspaceContext = (
     return false;
   }
 
-  // -------------------------------------------------------
-  // CHECK REQUEST WORKSPACE MATCH
-  // -------------------------------------------------------
-
   if (
     String(req.workspace._id) !==
     String(workspaceId)
@@ -135,10 +129,6 @@ const validateWorkspaceContext = (
     return false;
   }
 
-  // -------------------------------------------------------
-  // CHECK WORKSPACE STATUS
-  // -------------------------------------------------------
-
   if (
     req.workspace.status !==
     "active"
@@ -151,10 +141,6 @@ const validateWorkspaceContext = (
 
     return false;
   }
-
-  // -------------------------------------------------------
-  // CHECK REQUESTER MEMBERSHIP
-  // -------------------------------------------------------
 
   const requesterMembership =
     req.workspace.members.find(
@@ -174,9 +160,6 @@ const validateWorkspaceContext = (
 
     return false;
   }
-
-  // Keep the requester membership available
-  // to downstream controller logic if needed.
 
   req.workspaceMember =
     requesterMembership;
@@ -227,10 +210,6 @@ const validateAssigneeIds = (
     };
   }
 
-  // -------------------------------------------------------
-  // REMOVE DUPLICATES
-  // -------------------------------------------------------
-
   const normalizedAssigneeIds = [
     ...new Set(
       assigneeIds.map((id) =>
@@ -238,10 +217,6 @@ const validateAssigneeIds = (
       )
     ),
   ];
-
-  // -------------------------------------------------------
-  // VALIDATE OBJECT IDS
-  // -------------------------------------------------------
 
   for (
     const assigneeId of
@@ -260,18 +235,10 @@ const validateAssigneeIds = (
     }
   }
 
-  // -------------------------------------------------------
-  // GET ACTIVE MEMBERS
-  // -------------------------------------------------------
-
   const activeMemberIds =
     getActiveWorkspaceMemberIds(
       workspace
     );
-
-  // -------------------------------------------------------
-  // CHECK MEMBERSHIP
-  // -------------------------------------------------------
 
   const invalidAssigneeIds =
     normalizedAssigneeIds.filter(
@@ -315,10 +282,6 @@ const validateAssigneeIds = (
 const parseDeadline = (
   deadline
 ) => {
-  // -------------------------------------------------------
-  // REMOVE DEADLINE
-  // -------------------------------------------------------
-
   if (
     deadline === null ||
     deadline === ""
@@ -329,10 +292,6 @@ const parseDeadline = (
     };
   }
 
-  // -------------------------------------------------------
-  // FIELD NOT PROVIDED
-  // -------------------------------------------------------
-
   if (
     deadline === undefined
   ) {
@@ -341,10 +300,6 @@ const parseDeadline = (
       value: undefined,
     };
   }
-
-  // -------------------------------------------------------
-  // VALIDATE INPUT TYPE
-  // -------------------------------------------------------
 
   if (
     typeof deadline !== "string" &&
@@ -357,10 +312,6 @@ const parseDeadline = (
     };
   }
 
-  // -------------------------------------------------------
-  // EMPTY STRING
-  // -------------------------------------------------------
-
   if (
     typeof deadline === "string" &&
     !deadline.trim()
@@ -370,10 +321,6 @@ const parseDeadline = (
       value: null,
     };
   }
-
-  // -------------------------------------------------------
-  // PARSE DATE
-  // -------------------------------------------------------
 
   const parsedDeadline =
     new Date(deadline);
@@ -445,10 +392,6 @@ const createTask = async (
       deadline,
     } = req.body;
 
-    // -------------------------------------------------------
-    // VALIDATE WORKSPACE ID
-    // -------------------------------------------------------
-
     if (
       !validateWorkspaceId(
         workspaceId,
@@ -457,10 +400,6 @@ const createTask = async (
     ) {
       return;
     }
-
-    // -------------------------------------------------------
-    // VALIDATE WORKSPACE MEMBERSHIP
-    // -------------------------------------------------------
 
     if (
       !validateWorkspaceContext(
@@ -664,13 +603,20 @@ const createTask = async (
         completedAt,
       });
 
-    // -------------------------------------------------------
-    // POPULATE REFERENCES
-    // -------------------------------------------------------
-
     await populateTaskUsers(
       task
     );
+
+    // -------------------------------------------------------
+    // LOG ACTIVITY
+    // -------------------------------------------------------
+
+    await logActivity({
+      workspaceId,
+      user: req.user,
+      type: "created",
+      taskTitle: task.title,
+    });
 
     return res.status(201).json({
       success: true,
@@ -722,10 +668,6 @@ const getWorkspaceTasks = async (
       workspaceId,
     } = req.params;
 
-    // -------------------------------------------------------
-    // VALIDATE WORKSPACE ID
-    // -------------------------------------------------------
-
     if (
       !validateWorkspaceId(
         workspaceId,
@@ -735,10 +677,6 @@ const getWorkspaceTasks = async (
       return;
     }
 
-    // -------------------------------------------------------
-    // VALIDATE WORKSPACE MEMBERSHIP
-    // -------------------------------------------------------
-
     if (
       !validateWorkspaceContext(
         req,
@@ -747,10 +685,6 @@ const getWorkspaceTasks = async (
     ) {
       return;
     }
-
-    // -------------------------------------------------------
-    // GET TASKS
-    // -------------------------------------------------------
 
     const tasks =
       await Task.find({
@@ -808,10 +742,6 @@ const getSingleTask = async (
       taskId,
     } = req.params;
 
-    // -------------------------------------------------------
-    // VALIDATE IDS
-    // -------------------------------------------------------
-
     if (
       !validateWorkspaceId(
         workspaceId,
@@ -830,10 +760,6 @@ const getSingleTask = async (
       return;
     }
 
-    // -------------------------------------------------------
-    // VALIDATE WORKSPACE MEMBERSHIP
-    // -------------------------------------------------------
-
     if (
       !validateWorkspaceContext(
         req,
@@ -842,10 +768,6 @@ const getSingleTask = async (
     ) {
       return;
     }
-
-    // -------------------------------------------------------
-    // FIND TASK
-    // -------------------------------------------------------
 
     const task =
       await Task.findOne({
@@ -925,10 +847,6 @@ const updateTask = async (
       deadline,
     } = req.body;
 
-    // -------------------------------------------------------
-    // VALIDATE IDS
-    // -------------------------------------------------------
-
     if (
       !validateWorkspaceId(
         workspaceId,
@@ -946,10 +864,6 @@ const updateTask = async (
     ) {
       return;
     }
-
-    // -------------------------------------------------------
-    // VALIDATE WORKSPACE MEMBERSHIP
-    // -------------------------------------------------------
 
     if (
       !validateWorkspaceContext(
@@ -977,6 +891,11 @@ const updateTask = async (
           "Task not found in this workspace",
       });
     }
+
+    // Remember the status before any change so the activity
+    // log can tell a status move from a normal edit.
+    const previousStatus =
+      task.status;
 
     // -------------------------------------------------------
     // REQUIRE AT LEAST ONE FIELD
@@ -1093,10 +1012,6 @@ const updateTask = async (
       task.status =
         status;
 
-      // -----------------------------------------------------
-      // COMPLETION DATE LOGIC
-      // -----------------------------------------------------
-
       if (
         status === "done"
       ) {
@@ -1202,13 +1117,29 @@ const updateTask = async (
 
     await task.save();
 
-    // -------------------------------------------------------
-    // POPULATE REFERENCES
-    // -------------------------------------------------------
-
     await populateTaskUsers(
       task
     );
+
+    // -------------------------------------------------------
+    // LOG ACTIVITY
+    // -------------------------------------------------------
+
+    const statusChanged =
+      status !== undefined &&
+      task.status !== previousStatus;
+
+    await logActivity({
+      workspaceId,
+      user: req.user,
+      type: statusChanged
+        ? "status"
+        : "updated",
+      taskTitle: task.title,
+      newStatus: statusChanged
+        ? task.status
+        : null,
+    });
 
     return res.status(200).json({
       success: true,
@@ -1261,10 +1192,6 @@ const deleteTask = async (
       taskId,
     } = req.params;
 
-    // -------------------------------------------------------
-    // VALIDATE IDS
-    // -------------------------------------------------------
-
     if (
       !validateWorkspaceId(
         workspaceId,
@@ -1283,10 +1210,6 @@ const deleteTask = async (
       return;
     }
 
-    // -------------------------------------------------------
-    // VALIDATE WORKSPACE MEMBERSHIP
-    // -------------------------------------------------------
-
     if (
       !validateWorkspaceContext(
         req,
@@ -1299,27 +1222,36 @@ const deleteTask = async (
     // -------------------------------------------------------
     // DELETE TASK
     // -------------------------------------------------------
+    //
+    // findOneAndDelete returns the deleted document, so the
+    // title is still available for the activity log.
+    //
+    // -------------------------------------------------------
 
-    const deleteResult =
-      await Task.deleteOne({
+    const deletedTask =
+      await Task.findOneAndDelete({
         _id: taskId,
         workspaceId,
       });
 
-    // -------------------------------------------------------
-    // VERIFY DELETION
-    // -------------------------------------------------------
-
-    if (
-      deleteResult.deletedCount !==
-      1
-    ) {
+    if (!deletedTask) {
       return res.status(404).json({
         success: false,
         message:
           "Task not found in this workspace",
       });
     }
+
+    // -------------------------------------------------------
+    // LOG ACTIVITY
+    // -------------------------------------------------------
+
+    await logActivity({
+      workspaceId,
+      user: req.user,
+      type: "deleted",
+      taskTitle: deletedTask.title,
+    });
 
     return res.status(200).json({
       success: true,
